@@ -11,9 +11,10 @@
 class TE
 {
 private:
-	std::string substr;
+	std::vector<std::string> lines;
 	std::vector<sf::Text> Vtxt;
 	const std::string version;
+	sf::Text text;
 
 	sf::RectangleShape BackGround;
 	int textSize;
@@ -21,14 +22,24 @@ private:
 	bool allowScrolling;
 	sf::RectangleShape cursor;
 
+	std::size_t cursorColumn;
+	std::size_t cursorLine;
+	std::size_t lastCharSizeX;
+
+	bool cursorInControl;
+
 	float Linespacing;
 
 	void getInput(const sf::Event& event);
-	void scroll(const sf::Event& event, sf::View& v,const sf::RenderWindow& w);
-	void handleCursor(const std::vector<sf::Text>& t);
+	void scroll(const sf::Event& event, sf::View& v, const sf::RenderWindow& w);
+	void handleCursor(const std::vector<sf::Text>& t, sf::Keyboard::Scancode keyCode);
+	void shiftUp(const sf::Text& t);
+	void shiftDown(const sf::Text& t, std::size_t size);
+	void shiftLeft(const sf::Text& t);
+	void shiftRight(const sf::Text& t);
 public:
 	TE();
-	
+
 
 	void Start();
 
