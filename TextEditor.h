@@ -12,7 +12,7 @@ class TE
 {
 private:
 	std::string substr;
-	std::vector<std::string> str;
+	std::vector<sf::Text> Vtxt;
 	const std::string version;
 
 	sf::RectangleShape BackGround;

@@ -1,8 +1,16 @@
 #include "TextEditor.h"
 
-TE::TE() : substr(""), str(1024), version("alpha"), BackGround({ 0.f, 0.f }), textSize(18), font(), allowScrolling(false), cursor({0.f, 0.f}), Linespacing(28.f)
+TE::TE() : substr(""), version("alpha"), BackGround({ 0.f, 0.f }), textSize(18),
+font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
-    
+    text.setCharacterSize(textSize);
+    Vtxt.reserve(1);
+}
+
+void TE::shiftUp(const sf::Text& t)
+{
+    if (cursorLine > 0)
+        cursorLine -= 1;
 }
 
 void TE::getInput(const sf::Event& event)
@@ -14,17 +22,31 @@ void TE::getInput(const sf::Event& event)
         if (typed == 8) // Backspace
         {
             if (!substr.empty())
+            {
+                cursorColumn = std::max(0, (int)cursorColumn - 1);
+                if (substr.back() == '\n')
+                {
+                    cursorLine = std::max(0, (int)cursorLine - 1);
+                    if (cursorLine < Vtxt.size())
+                        cursorColumn = Vtxt[cursorLine].getString().getSize();
+                    else
+                        cursorColumn = 0;
+                }
+
                 substr.pop_back();
+            }
             allowScrolling = true;
         }
         else if (typed == 13 || typed == '\n') // Enter
         {
             substr += '\n';
+            cursorLine += 1;
             allowScrolling = true;
         }
         else if (typed >= 32 && typed < 127) // Printable ASCII
         {
             substr += typed;
+            cursorColumn += 1;
             allowScrolling = true;
         }
     }
@@ -131,10 +153,10 @@ void TE::Start()
             }
             getInput(*event);
         }
-        
+
 
         //keyScroll(view, window);
-        
+
         std::vector<std::string> lines;
         std::string line;
 
@@ -149,10 +171,11 @@ void TE::Start()
             {
                 line += c;
             }
-            
+
         }
         lines.push_back(line); // push final line
 
+        //keyScroll(view, window);A
         // Prepare texts
         std::vector<sf::Text> textLines;
         std::vector<sf::Text> lineNumbers;
