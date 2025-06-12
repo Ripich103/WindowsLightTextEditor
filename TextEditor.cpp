@@ -1,6 +1,7 @@
 #include "TextEditor.h"
 
-TE::TE() : substr(""), str(1024), version("alpha"), BackGround({ 0.f, 0.f }), textSize(18), font(), allowScrolling(false), cursor({0.f, 0.f}), Linespacing(28.f)
+TE::TE() : version("alpha"), BackGround({ 0.f, 0.f }), textSize(18),
+font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
     text.setCharacterSize(textSize);
     Vtxt.reserve(1);
@@ -38,19 +39,54 @@ void TE::getInput(const sf::Event& event)
 
         if (typed == 8) // Backspace
         {
-            if (!substr.empty())
-                substr.pop_back();
+            if (!lines[cursorLine].empty())
+            {
+                if (cursorColumn > 0)
+                {
+                    lines[cursorLine].erase(cursorColumn - 1, 1);
+                    cursorColumn--;
+                }
+                else if (cursorLine > 0)
+                {
+                    // Merge with previous line
+                    cursorColumn = lines[cursorLine - 1].size();
+                    lines[cursorLine - 1] += lines[cursorLine];
+                    lines.erase(lines.begin() + cursorLine);
+                    cursorLine--;
+                }
+            }
+            if (cursorColumn > 0)
+            {
+                lines[cursorLine].erase(cursorColumn - 1, 1);
+                cursorColumn--;
+            }
+            else if (cursorLine > 0)
+            {
+                // Merge with previous line
+                cursorColumn = lines[cursorLine - 1].size();
+                lines[cursorLine - 1] += lines[cursorLine];
+                lines.erase(lines.begin() + cursorLine);
+                cursorLine--;
             }
             allowScrolling = true;
         }
         else if (typed == 13 || typed == '\n') // Enter
         {
-            substr += '\n';
+            std::string current = lines[cursorLine];
+            std::string left = current.substr(0, cursorColumn);
+            std::string right = current.substr(cursorColumn);
+
+            lines[cursorLine] = left;
+            lines.insert(lines.begin() + cursorLine + 1, right);
+
+            cursorLine += 1;
+            cursorColumn = 0;
             allowScrolling = true;
         }
         else if (typed >= 32 && typed < 127) // Printable ASCII
         {
-            substr += typed;
+            lines[cursorLine].insert(lines[cursorLine].begin() + cursorColumn, typed);
+            cursorColumn += 1;
             allowScrolling = true;
         }
     }
@@ -178,27 +214,7 @@ void TE::Start()
             }
             getInput(*event);
         }
-        
 
-        //keyScroll(view, window);
-        
-        std::vector<std::string> lines;
-        std::string line;
-
-        for (char c : substr)
-        {
-            if (c == '\n')
-            {
-                lines.push_back(line);
-                line.clear();
-            }
-            else
-            {
-                line += c;
-            }
-            
-        }
-        lines.push_back(line); // push final line
 
         //keyScroll(view, window);A
         // Prepare texts
