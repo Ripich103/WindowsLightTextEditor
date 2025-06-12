@@ -42,7 +42,7 @@ void TE::getInput(const sf::Event& event)
             if (!lines[cursorLine].empty())
             {
                 if (cursorColumn > 0)
-                
+                {
                     cursorColumn--;
                     lines[cursorLine].erase(cursorColumn, 1);
                 }
