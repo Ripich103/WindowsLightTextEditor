@@ -1,11 +1,13 @@
 #include "TextEditor.h"
 
-TE::TE() : version("alpha"), BackGround({ 0.f, 0.f }), textSize(18),
+TE::TE() : filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
 font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
     text.setCharacterSize(textSize);
     Vtxt.reserve(1);
     lines = { "" };
+    ReadOrWriteModule.setFileName(filename);
+    TextInitialPos = { 60.f, 10.f };
 }
 
 void TE::shiftUp(const sf::Text& t)
@@ -31,6 +33,69 @@ void TE::shiftRight(const sf::Text& t)
     cursorColumn += 1;
 }
 
+bool TE::checkIfThereIsTxTEnding(const std::string& s)
+{
+    std::size_t i = s.find_last_of('.');
+    std::string ending = "";
+    for (; i < s.size();++i)
+    {
+        ending += s[i];
+    }
+
+    if (ending == ".txt")
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+std::string TE::show_SaveAsDialog() noexcept
+{
+    char fileName[MAX_PATH] = "";
+
+    OPENFILENAMEA ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL;  
+    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
+    ofn.lpstrFile = fileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = "Save As";
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+
+    if (GetSaveFileNameA(&ofn)) {
+        return std::string(fileName); // User selected a file
+    }
+
+    return "";
+}
+
+std::string TE::show_LoadFromDialog() noexcept
+{
+    char fileName[MAX_PATH] = "";
+
+    OPENFILENAMEA ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL;  
+    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
+    ofn.lpstrFile = fileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = "Open From";
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+
+    if (GetOpenFileNameA(&ofn)) {
+        return std::string(fileName); // User selected a file
+    }
+
+    return "";
+}
+
 void TE::getInput(const sf::Event& event)
 {
     if (const auto* textEntered = event.getIf<sf::Event::TextEntered>())
@@ -43,8 +108,8 @@ void TE::getInput(const sf::Event& event)
             {
                 if (cursorColumn > 0)
                 {
-                    lines[cursorLine].erase(cursorColumn - 1, 1);
                     cursorColumn--;
+                    lines[cursorLine].erase(cursorColumn, 1);
                 }
                 else if (cursorLine > 0)
                 {
@@ -55,10 +120,10 @@ void TE::getInput(const sf::Event& event)
                     cursorLine--;
                 }
             }
-            if (cursorColumn > 0)
+            else if (cursorColumn > 0)
             {
-                lines[cursorLine].erase(cursorColumn - 1, 1);
                 cursorColumn--;
+                lines[cursorLine].erase(cursorColumn, 1);
             }
             else if (cursorLine > 0)
             {
@@ -164,7 +229,7 @@ void TE::Start()
         return;
     }
 
-    text.setPosition({ 60.f, 10.f });
+    text.setPosition(TextInitialPos);
     text.setFillColor(sf::Color::Color::Black);
 
     float n{ 0 };
@@ -181,21 +246,27 @@ void TE::Start()
     cursorLine = 0;
     cursorColumn = 0;
 
-
-    sf::Clock clock;
+    //--------/init clocks\--------
+    sf::Clock clock; // using for blinking cursor animation
     clock.start();
 
+    const float FileLastCallDelay = 0.5f;
+    sf::Clock clock2; // using for ctrl + s lock and unlock
+    clock2.start();
+
+    sf::Clock clock3; // using for ctrl + r lock and unlock
+    clock3.start();
+    //-----------------------------
+
+    //---------/main-loop\---------
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
-        {
-            // "close requested" event: we close the window
-            if (event->is<sf::Event::Closed>())
+        {   // "close requested" event: we close the window
+            if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Escape))
                 window.close();
-
             if (event->is<sf::Event::Resized>())
-            {
-                // Update view size, preserve center
+            {   // Update view size, preserve center
                 sf::Vector2f center = view.getCenter();
                 view.setSize({ (float)window.getSize().x, (float)window.getSize().y });
                 view.setCenter({ view.getSize().x / 2.f, view.getSize().y / 2.f });
@@ -207,14 +278,66 @@ void TE::Start()
             }
             if (event->is<sf::Event::MouseWheelScrolled>())
             {
-
                 scroll(*event, view, window);
                 window.setView(view);
-                //std::cout << "DEBUG[] v.y" << view.getCenter().y << " DEBUG[] bg.x and y " << BackGround.getSize().x << " " << BackGround.getSize().y << "\n";
             }
+
             getInput(*event);
         }
 
+
+        // Lctrl + s \ Rctrl + s 
+        // save as \ just save
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl) 
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay ||
+            (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl) 
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay)
+        {
+            clock2.restart();
+            if (filename == "Untitled.txt")
+            {
+                // we should request new filename from user
+                // for this i will use windows API 
+                std::string newFileName = show_SaveAsDialog();
+                if (!newFileName.empty()) {
+
+                    filename = newFileName;
+                    if (!checkIfThereIsTxTEnding(filename))
+                        filename += ".txt";
+
+                    ReadOrWriteModule.setFileName(filename);
+                }
+            }
+            // it will just save instead of making new file!
+                std::cout << "#saved to " << filename << "!\n";                
+                ReadOrWriteModule.WriteToFile(lines);
+        }
+
+        // Lctr + R \ Rctrl + R
+        // load from file
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::R)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay ||
+            (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::R)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay)
+        {
+            clock3.restart();
+            // i need to ask the client from where should i read
+            // i will use the win api way almost like
+            // with save as
+            std::string FromWhereToRead = show_LoadFromDialog();
+            if (!FromWhereToRead.empty()) {
+                filename = FromWhereToRead;
+                ReadOrWriteModule.setFileName(filename);
+                ReadOrWriteModule.ReadFile(); // reads from file and saves to buffer
+                lines = ReadOrWriteModule.getBuffer(); // now we need to adjsut cursorLine and cursorColumn
+                // i will set them at 0 and 0
+                // so the text in initial pos
+                cursorColumn = 0;
+                cursorLine = 0;
+                text.setPosition(TextInitialPos);
+                cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y }); // also reset the cursor
+            }
+        }
 
         //keyScroll(view, window);A
         // Prepare texts
@@ -241,7 +364,7 @@ void TE::Start()
             t.setString(lines[i]);
             t.setCharacterSize(textSize);
             t.setFillColor(sf::Color::Black);
-            t.setPosition({ 60.f, 10.f + i * lineSpacing });
+            t.setPosition({ TextInitialPos.x, TextInitialPos.y + i * lineSpacing });
             textLines.push_back(t);
         }
         Vtxt = std::move(textLines);
@@ -312,6 +435,7 @@ void TE::Start()
             cursorInControl = false;
             handleCursor(Vtxt, sf::Keyboard::Scancode::Unknown);
         }
+
         window.clear(sf::Color::White);
         window.draw(BackGround);
 
@@ -339,4 +463,7 @@ void TE::Start()
             transparentCursor = false;
         }
     }
+    //-----------------------------
+
+    return;
 }

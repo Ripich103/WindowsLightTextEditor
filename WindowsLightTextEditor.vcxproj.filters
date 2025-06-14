@@ -21,9 +21,15 @@
     <ClCompile Include="TextEditor.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="RWFM.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TextEditor.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="RWFM.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
