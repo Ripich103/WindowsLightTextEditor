@@ -5,13 +5,14 @@
 #include<string>
 #include<utility>
 #include<algorithm>
-#include "SFML/Graphics.hpp"
-#include "SFML/Window.hpp"
+#include <SFML/Graphics.hpp>
+#include <SFML/Window.hpp>
 #include "RWFM.h"
 #include <Windows.h>
 #include <commdlg.h>
 
-
+#include <TGUI/TGUI.hpp>
+#include <TGUI/Backend/SFML-Graphics.hpp>
 
 class TE
 {
@@ -20,6 +21,12 @@ private:
 	std::vector<sf::Text> Vtxt;
 	const std::string version;
 	sf::Text text;
+
+	sf::Color TextColor;
+
+	sf::Color NumColor;
+
+	sf::Color NumBGColor;
 
 	sf::RectangleShape BackGround;
 	int textSize;
@@ -30,6 +37,8 @@ private:
 	std::size_t cursorColumn;
 	std::size_t cursorLine;
 	std::size_t lastCharSizeX;
+
+	bool isSettingsOpened;
 
 	sf::Vector2f TextInitialPos;
 
@@ -54,6 +63,8 @@ private:
 	std::string show_SaveAsDialog() noexcept;
 
 	std::string show_LoadFromDialog() noexcept;
+
+	void show_settings(sf::RenderWindow* Base_window);
 
 public:
 	TE();

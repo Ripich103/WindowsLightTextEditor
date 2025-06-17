@@ -1,6 +1,6 @@
 #include "TextEditor.h"
 
-TE::TE() : filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
+TE::TE() : NumBGColor(sf::Color::White), NumColor(sf::Color(80, 80, 80)), TextColor(sf::Color::Black), isSettingsOpened(false), filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
 font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
     text.setCharacterSize(textSize);
@@ -94,6 +94,59 @@ std::string TE::show_LoadFromDialog() noexcept
     }
 
     return "";
+}
+
+void TE::show_settings(sf::RenderWindow* Base_window)
+{
+    sf::RenderWindow settingsWindow(sf::VideoMode({ 1050, 900 }), "Settings");
+    tgui::Gui gui(settingsWindow);
+
+    auto BGColorPicker = tgui::ColorPicker::create("Set text background color", BackGround.getFillColor());
+
+    auto TextColorPicker = tgui::ColorPicker::create("Set text color", TextColor);
+
+    auto NumColorPicker = tgui::ColorPicker::create("Set number color", NumColor);
+
+    auto NumBgColorPicker = tgui::ColorPicker::create("Set number background color", NumBGColor);
+    gui.add(BGColorPicker);
+    gui.add(TextColorPicker);
+    gui.add(NumColorPicker);
+    gui.add(NumBgColorPicker);
+
+    BGColorPicker->onOkPress([=](const tgui::Color& color) 
+        {BackGround.setFillColor({ color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() });});
+    TextColorPicker->onOkPress([=](const tgui::Color& color)
+        {TextColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+    NumColorPicker->onOkPress([=](const tgui::Color& color)
+        {NumColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+    NumBgColorPicker->onOkPress([=](const tgui::Color& color)
+        {NumBGColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+
+    BGColorPicker->setAutoLayout(tgui::AutoLayout::Bottom);
+    TextColorPicker->setAutoLayout(tgui::AutoLayout::Top);
+    NumColorPicker->setWidth(520);
+    NumColorPicker->setAutoLayout(tgui::AutoLayout::Rightmost);
+    NumBgColorPicker->setAutoLayout(tgui::AutoLayout::Fill);
+
+    while (settingsWindow.isOpen())
+    {
+        while (const std::optional event = settingsWindow.pollEvent())
+        {
+            gui.handleEvent(*event);
+
+            if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Escape))
+            {
+                gui.removeAllWidgets();
+                settingsWindow.close();
+            }
+        }
+
+        settingsWindow.clear(sf::Color::Black);
+
+        gui.draw();
+
+        settingsWindow.display();
+    }
 }
 
 void TE::getInput(const sf::Event& event)
@@ -216,7 +269,7 @@ void TE::handleCursor(const std::vector<sf::Text>& t, sf::Keyboard::Scancode key
 
 void TE::Start()
 {
-    sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "MLTE v" + version, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
+    sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "MLTE v" + version + " : " + filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
 
@@ -254,13 +307,23 @@ void TE::Start()
     sf::Clock clock2; // using for ctrl + s lock and unlock
     clock2.start();
 
-    sf::Clock clock3; // using for ctrl + r lock and unlock
+    sf::Clock clock3; // using for ctrl + o lock and unlock
     clock3.start();
     //-----------------------------
+
+    std::string previous_filename = filename;
 
     //---------/main-loop\---------
     while (window.isOpen())
     {
+        // if user changed the file name
+        if (previous_filename != filename)
+        {
+            previous_filename = filename;
+
+            std::string strapedFilename = filename.substr(filename.find_last_of('\\') + 1);
+            window.setTitle("MLTE v" + version + " : " + strapedFilename);
+        }
         while (const std::optional event = window.pollEvent())
         {   // "close requested" event: we close the window
             if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Escape))
@@ -284,7 +347,6 @@ void TE::Start()
 
             getInput(*event);
         }
-
 
         // Lctrl + s \ Rctrl + s 
         // save as \ just save
@@ -313,12 +375,12 @@ void TE::Start()
                 ReadOrWriteModule.WriteToFile(lines);
         }
 
-        // Lctr + R \ Rctrl + R
+        // Lctr + O \ Rctrl + O
         // load from file
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
-            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::R)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay ||
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay ||
             (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
-                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::R)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay)
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay)
         {
             clock3.restart();
             // i need to ask the client from where should i read
@@ -339,6 +401,17 @@ void TE::Start()
             }
         }
 
+        // ctr + p parameters
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::P)) && !isSettingsOpened ||
+            (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::P)) && !isSettingsOpened)
+        {
+            isSettingsOpened = true;
+            show_settings(&window);
+            isSettingsOpened = false;
+        }
+
         //keyScroll(view, window);A
         // Prepare texts
         std::vector<sf::Text> textLines;
@@ -351,7 +424,7 @@ void TE::Start()
             sf::Text num(font);
             num.setCharacterSize(textSize);
             num.setString(std::to_string(i + 1));
-            num.setFillColor(sf::Color(80, 80, 80));
+            num.setFillColor(NumColor);
             num.setPosition({ 10.f, 10.f + i * lineSpacing });
             lineNumbers.push_back(num);
 
@@ -363,7 +436,7 @@ void TE::Start()
             sf::Text t(font);
             t.setString(lines[i]);
             t.setCharacterSize(textSize);
-            t.setFillColor(sf::Color::Black);
+            t.setFillColor(TextColor);
             t.setPosition({ TextInitialPos.x, TextInitialPos.y + i * lineSpacing });
             textLines.push_back(t);
         }
@@ -436,7 +509,7 @@ void TE::Start()
             handleCursor(Vtxt, sf::Keyboard::Scancode::Unknown);
         }
 
-        window.clear(sf::Color::White);
+        window.clear(NumBGColor);
         window.draw(BackGround);
 
         for (const auto& num : lineNumbers)
