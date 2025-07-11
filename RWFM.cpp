@@ -35,14 +35,22 @@ void RWFM::setFileName(const std::string& new_filename) noexcept
 
 RWFM::StatusCodes RWFM::ReadFile()
 {
+	m_buffer.clear();
 	std::ifstream readF(m_filename);
 	if (!readF.is_open())
 	{
 		m_code = StatusCodes::STATUS_ERROR;
 		return m_code;
 	}
+
+	if (is_empty(readF))
+	{
+		m_code = StatusCodes::STATUS_EMPTYBUF;
+		return m_code;
+	}
+
 	std::string input = "";
-	while (readF >> input)
+	while (std::getline(readF, input, '\n'))
 	{
 		m_buffer.push_back(input);
 	}

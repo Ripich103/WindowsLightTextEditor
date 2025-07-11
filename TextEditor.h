@@ -9,7 +9,6 @@
 #include <SFML/Window.hpp>
 #include "RWFM.h"
 #include <Windows.h>
-#include <commdlg.h>
 
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -17,10 +16,16 @@
 class TE
 {
 private:
+	sf::Clock clock3; 
+	sf::Clock clock2;
+	sf::Clock clock;
+
 	std::vector<std::string> lines;
 	std::vector<sf::Text> Vtxt;
 	const std::string version;
 	sf::Text text;
+
+	sf::Texture bgTexture;
 
 	sf::Color TextColor;
 
@@ -39,10 +44,19 @@ private:
 	std::size_t lastCharSizeX;
 
 	bool isSettingsOpened;
+	bool isOpenFromFileOpened;
+
+	bool isSaveAsOpened;
+
+	bool ShowStar;
+
+	void OpenFromFIle();
+	void SaveAs();
+	void Save();
 
 	sf::Vector2f TextInitialPos;
 
-	std::string filename;
+	std::string m_filename;
 
 	RWFM ReadOrWriteModule;
 
@@ -64,7 +78,15 @@ private:
 
 	std::string show_LoadFromDialog() noexcept;
 
-	void show_settings(sf::RenderWindow* Base_window);
+	void show_settings();
+
+	void spritesMenu(tgui::Gui& gui);
+
+	void colorMenu(tgui::Gui& gui);
+
+	void setNewBgTexture();
+
+	void setNewNumBgTexture();
 
 public:
 	TE();
