@@ -1,12 +1,12 @@
 #include "TextEditor.h"
 
-TE::TE() : NumBGColor(sf::Color::White), NumColor(sf::Color(80, 80, 80)), TextColor(sf::Color::Black), isSettingsOpened(false), filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
+TE::TE() :  ShowStar(false), isSaveAsOpened(false), isOpenFromFileOpened(false), NumBGColor(sf::Color::White), NumColor(sf::Color(80, 80, 80)), TextColor(sf::Color::Black), isSettingsOpened(false), m_filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
 font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
     text.setCharacterSize(textSize);
     Vtxt.reserve(1);
     lines = { "" };
-    ReadOrWriteModule.setFileName(filename);
+    ReadOrWriteModule.setFileName(m_filename);
     TextInitialPos = { 60.f, 10.f };
 }
 
@@ -36,20 +36,11 @@ void TE::shiftRight(const sf::Text& t)
 bool TE::checkIfThereIsTxTEnding(const std::string& s)
 {
     std::size_t i = s.find_last_of('.');
-    std::string ending = "";
-    for (; i < s.size();++i)
-    {
-        ending += s[i];
-    }
-
-    if (ending == ".txt")
-    {
-        return true;
-    }
-    else
-    {
+    if (i == std::string::npos)
         return false;
-    }
+
+    std::string ending = s.substr(i);
+    return ending == ".txt";
 }
 
 std::string TE::show_SaveAsDialog() noexcept
@@ -96,37 +87,13 @@ std::string TE::show_LoadFromDialog() noexcept
     return "";
 }
 
-void TE::show_settings(sf::RenderWindow* Base_window)
+void TE::show_settings()
 {
-    sf::RenderWindow settingsWindow(sf::VideoMode({ 1050, 900 }), "Settings");
+    isSettingsOpened = true;
+    sf::RenderWindow settingsWindow(sf::VideoMode({ 1000, 500 }), "Settings");
     tgui::Gui gui(settingsWindow);
 
-    auto BGColorPicker = tgui::ColorPicker::create("Set text background color", BackGround.getFillColor());
-
-    auto TextColorPicker = tgui::ColorPicker::create("Set text color", TextColor);
-
-    auto NumColorPicker = tgui::ColorPicker::create("Set number color", NumColor);
-
-    auto NumBgColorPicker = tgui::ColorPicker::create("Set number background color", NumBGColor);
-    gui.add(BGColorPicker);
-    gui.add(TextColorPicker);
-    gui.add(NumColorPicker);
-    gui.add(NumBgColorPicker);
-
-    BGColorPicker->onOkPress([=](const tgui::Color& color) 
-        {BackGround.setFillColor({ color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() });});
-    TextColorPicker->onOkPress([=](const tgui::Color& color)
-        {TextColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
-    NumColorPicker->onOkPress([=](const tgui::Color& color)
-        {NumColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
-    NumBgColorPicker->onOkPress([=](const tgui::Color& color)
-        {NumBGColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
-
-    BGColorPicker->setAutoLayout(tgui::AutoLayout::Bottom);
-    TextColorPicker->setAutoLayout(tgui::AutoLayout::Top);
-    NumColorPicker->setWidth(520);
-    NumColorPicker->setAutoLayout(tgui::AutoLayout::Rightmost);
-    NumBgColorPicker->setAutoLayout(tgui::AutoLayout::Fill);
+    colorMenu(gui);
 
     while (settingsWindow.isOpen())
     {
@@ -141,11 +108,221 @@ void TE::show_settings(sf::RenderWindow* Base_window)
             }
         }
 
-        settingsWindow.clear(sf::Color::Black);
+        settingsWindow.clear(sf::Color::White);
 
         gui.draw();
 
         settingsWindow.display();
+        isSettingsOpened = false;
+    }
+}
+
+void TE::spritesMenu(tgui::Gui& gui)
+{
+    gui.removeAllWidgets();
+    // cuz i want to have window have the size of a button
+    auto SetNumBgSpriteButton = tgui::Button::create("Change numbers background image");
+    
+    gui.getWindow()->setSize({static_cast<unsigned int>(SetNumBgSpriteButton->getSize().x + 10),static_cast<unsigned int>(SetNumBgSpriteButton->getSize().y * 7 + 10)});
+
+    auto SpritePickPanel = tgui::Panel::create({ (double)gui.getWindow()->getSize().x ,(double)gui.getWindow()->getSize().y });
+    auto changeToColorButton = tgui::Button::create("Color menu");
+    auto SetBgSprite = tgui::Button::create("Change background image");
+    auto SetFont = tgui::Button::create("Change fonts");
+
+    sf::Font N_font;
+
+    gui.add(SpritePickPanel);
+    SpritePickPanel->getRenderer()->setBackgroundColor({ 127, 127, 127, 255});
+    SpritePickPanel->getRenderer()->setPadding(5);
+
+    // adding to panel
+    SpritePickPanel->add(changeToColorButton);
+    SpritePickPanel->add(SetBgSprite);
+    SpritePickPanel->add(SetNumBgSpriteButton);
+    SpritePickPanel->add(SetFont);
+
+    // setting position
+    changeToColorButton->setWidth(SpritePickPanel->getSize().x);
+    SetBgSprite->setPosition({ 0, SetBgSprite->getSize().y + changeToColorButton->getPosition().y });
+    SetNumBgSpriteButton->setPosition({ 0, SetNumBgSpriteButton->getSize().y + SetBgSprite->getPosition().y });
+    SetFont->setPosition({ 0, SetFont->getSize().y + SetNumBgSpriteButton->getPosition().y });
+
+    // setting button function`s
+    changeToColorButton->onPress([&]() {
+        colorMenu(gui);
+        });
+
+    SetBgSprite->onPress([&]() {
+        setNewBgTexture();
+        });
+
+    SetNumBgSpriteButton->onPress([&]()
+        {
+            setNewNumBgTexture();
+        });
+
+}
+
+void TE::colorMenu(tgui::Gui& gui)
+{
+    gui.removeAllWidgets();
+
+    auto ColorPickerPanel = tgui::Panel::create({ (double)gui.getWindow()->getSize().x + 100 ,(double)gui.getWindow()->getSize().y + 100 });
+    auto BGColorPicker = tgui::ColorPicker::create("Set text background color", BackGround.getFillColor());
+    auto TextColorPicker = tgui::ColorPicker::create("Set text color", TextColor);
+    auto NumColorPicker = tgui::ColorPicker::create("Set number color", NumColor);
+    auto NumBgColorPicker = tgui::ColorPicker::create("Set number background color", NumBGColor);
+    auto changeToSpritesButton = tgui::Button::create("Sprites menu");
+
+    ColorPickerPanel->setSize({ BGColorPicker->getSize().x * 2, BGColorPicker->getSize().y * 2 + changeToSpritesButton->getSize().y });
+    gui.getWindow()->setSize( { (unsigned int)ColorPickerPanel->getSize().x, (unsigned int)ColorPickerPanel->getSize().y });
+
+    gui.add(ColorPickerPanel);
+    ColorPickerPanel->add(changeToSpritesButton);
+    ColorPickerPanel->add(BGColorPicker);
+    ColorPickerPanel->add(TextColorPicker);
+    ColorPickerPanel->add(NumColorPicker);
+    ColorPickerPanel->add(NumBgColorPicker);
+
+    // configuring gui
+    ColorPickerPanel->getRenderer()->setPadding(5);
+    ColorPickerPanel->getRenderer()->setBackgroundColor({80, 80, 80, 255});
+    
+
+    BGColorPicker->setPositionLocked(true);
+    TextColorPicker->setPositionLocked(true);
+    NumColorPicker->setPositionLocked(true);
+    NumBgColorPicker->setPositionLocked(true);
+
+    BGColorPicker->onOkPress([=](const tgui::Color& color)
+        {BackGround.setFillColor({ color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() });});
+    TextColorPicker->onOkPress([=](const tgui::Color& color)
+        {TextColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+    NumColorPicker->onOkPress([=](const tgui::Color& color)
+        {NumColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+    NumBgColorPicker->onOkPress([=](const tgui::Color& color)
+        {NumBGColor = { color.getRed(),color.getGreen(),color.getBlue(),color.getAlpha() };});
+
+    changeToSpritesButton->setWidth(ColorPickerPanel->getSize().x);
+    
+    changeToSpritesButton->onPress([&]() {
+        spritesMenu(gui);
+        });
+
+    TextColorPicker->setPosition(TextColorPicker->getPosition().x, changeToSpritesButton->getSize().y);
+    BGColorPicker->setPosition(TextColorPicker->getPosition().x + BGColorPicker->getSize().x, TextColorPicker->getPosition().y + NumBgColorPicker->getSize().y);
+    NumColorPicker->setPosition(TextColorPicker->getPosition().x + NumColorPicker->getSize().x, TextColorPicker->getPosition().y);
+    NumBgColorPicker->setPosition(TextColorPicker->getPosition().x, TextColorPicker->getPosition().y + NumBgColorPicker->getSize().y);
+}
+
+void TE::setNewBgTexture()
+{
+    char fileName[MAX_PATH] = "";
+
+    OPENFILENAMEA ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL;
+    ofn.lpstrFilter = "Png Files (*.png)\0*.png\0Jpeg Files (*.jpeg)\0*.jpeg\0";
+    ofn.lpstrFile = fileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = "Open From";
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+
+    if (GetOpenFileNameA(&ofn)) {
+        if (!bgTexture.loadFromFile(fileName))
+        {
+            throw std::runtime_error("Run time error can`t load from this png/jpeg file!");
+        }
+        else
+        {
+            BackGround.setTexture(&bgTexture);
+        }
+    }
+}
+
+void TE::setNewNumBgTexture()
+{
+}
+
+void TE::OpenFromFIle()
+{
+    isOpenFromFileOpened = true;
+
+    // i need to ask the client from where should i read
+    // i will use the win api way almost like
+    // with save as
+    std::string FromWhereToRead = show_LoadFromDialog();
+    if (GetFileAttributesA(FromWhereToRead.c_str()) != INVALID_FILE_ATTRIBUTES)
+    {
+        if (!FromWhereToRead.empty()) {
+            m_filename = FromWhereToRead;
+            ReadOrWriteModule.setFileName(m_filename);
+            ReadOrWriteModule.ReadFile(); // reads from file and saves to buffer
+
+            if (ReadOrWriteModule.getStatusCode() == RWFM::StatusCodes::STATUS_EMPTYBUF)
+            {
+                std::cout << "EMPTY BUF";
+                lines.clear();
+                lines = { "" };
+            }
+            else
+            {
+                lines = ReadOrWriteModule.getBuffer();
+            }
+            // now we need to adjsut cursorLine and cursorColumn
+            // i will set them at 0 and 0
+            // so the text in initial pos
+            cursorColumn = 0;
+            cursorLine = 0;
+            text.setPosition(TextInitialPos);
+            cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y }); // also reset the cursor
+        }
+    }
+    else
+    {
+        MessageBoxA(NULL, "INVALID_FILE_ATTRIBUTES try with existing file", "ERROR", MB_OK | MB_ICONERROR);
+    }
+    isOpenFromFileOpened = false;
+}
+
+void TE::SaveAs()
+{
+    // we should request new filename from user
+    // for this i will use windows API 
+    std::string newFileName = show_SaveAsDialog();
+    if (!newFileName.empty()) {
+    
+        m_filename = newFileName;
+        if (!checkIfThereIsTxTEnding(m_filename))
+            m_filename += ".txt";
+    
+        ReadOrWriteModule.setFileName(m_filename);
+    }
+    else
+    {
+        // user refused to save the file
+        return;
+    }
+    //std::cout << "#saved to " << filename << "!\n";
+    ReadOrWriteModule.WriteToFile(lines);
+
+    ShowStar = false;
+}
+
+void TE::Save()
+{
+    if (GetFileAttributesA(m_filename.c_str()) != INVALID_FILE_ATTRIBUTES)
+    {
+        // file exists
+        ReadOrWriteModule.WriteToFile(lines);
+        ShowStar = false;
+    }
+    else if(m_filename == "Untitled.txt" || m_filename != "Untitled.txt*")
+    {
+        SaveAs();
     }
 }
 
@@ -172,6 +349,9 @@ void TE::getInput(const sf::Event& event)
                     lines.erase(lines.begin() + cursorLine);
                     cursorLine--;
                 }
+
+                allowScrolling = true;
+                ShowStar = true;
             }
             else if (cursorColumn > 0)
             {
@@ -186,7 +366,9 @@ void TE::getInput(const sf::Event& event)
                 lines.erase(lines.begin() + cursorLine);
                 cursorLine--;
             }
+
             allowScrolling = true;
+            ShowStar = true;
         }
         else if (typed == 13 || typed == '\n') // Enter
         {
@@ -199,41 +381,55 @@ void TE::getInput(const sf::Event& event)
 
             cursorLine += 1;
             cursorColumn = 0;
+
             allowScrolling = true;
+            ShowStar = true;
         }
         else if (typed >= 32 && typed < 127) // Printable ASCII
         {
             lines[cursorLine].insert(lines[cursorLine].begin() + cursorColumn, typed);
             cursorColumn += 1;
+
             allowScrolling = true;
+            ShowStar = true;
         }
     }
-
-
 }
 
 void TE::scroll(const sf::Event& event, sf::View& v, const sf::RenderWindow& w)
 {
-    sf::Vector2f center = v.getCenter();
     if (const auto* mouseWheelScrolled = event.getIf<sf::Event::MouseWheelScrolled>())
     {
-        switch (mouseWheelScrolled->wheel)
-        {
-        case sf::Mouse::Wheel::Vertical:
-            center.y -= mouseWheelScrolled->delta * 30.f; // scroll sensitivity
-            break;
-        }
-    }
-    if ((center.y * 2.f) > BackGround.getSize().y)
-    {
-        center.y = BackGround.getSize().y / 2.f;
-    }
-    else if (center.y * 2.f < w.getSize().y)
-    {
-        center.y = w.getSize().y / 2.f;
+        float scrollAmount = -mouseWheelScrolled->delta * 60.f; // fix scroll direction
+        v.move({ 0.f, scrollAmount });
     }
 
-    v.setCenter(center); // Keep both X and Y unchanged except for scroll
+    sf::Vector2f center = v.getCenter();
+    float halfViewHeight = v.getSize().y / 2.f;
+
+    // Top scroll limit
+    float minY = halfViewHeight;
+
+    // --- Bottom scroll limit ---
+    float maxY = minY; // fallback value
+    if (!Vtxt.empty())
+    {
+        const auto& lastLine = Vtxt.back();
+        float lastLineBottom = lastLine.getPosition().y + lastLine.getCharacterSize();
+        maxY = std::max(minY, lastLineBottom - halfViewHeight + 20.f);
+    }
+
+    // Clamp the Y
+    if (center.y < minY)
+    {
+        center.y = minY;
+    }
+    else if (center.y > maxY)
+    {
+        center.y = maxY;
+    }
+
+    v.setCenter(center);
 }
 
 void TE::handleCursor(const std::vector<sf::Text>& t, sf::Keyboard::Scancode keyCode)
@@ -266,12 +462,50 @@ void TE::handleCursor(const std::vector<sf::Text>& t, sf::Keyboard::Scancode key
     cursor.setPosition(t[cursorLine].findCharacterPos(cursorColumn));
 }
 
-
 void TE::Start()
 {
-    sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "MLTE v" + version + " : " + filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
+    sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "MLTE v" + version + " : " + m_filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
+
+    tgui::Gui TEgui(window);
+    auto OptionButton = tgui::Button::create("Open settings.");
+    auto SaveButton = tgui::Button::create("Save file.");
+    auto OpenButton = tgui::Button::create("Open from file.");
+    auto SaveAsButton = tgui::Button::create("Save as.");
+    auto buttonPanel = tgui::Panel::create({ OptionButton->getSize().x * 3, OptionButton->getSize().y });
+
+    TEgui.add(buttonPanel);
+    buttonPanel->add(OptionButton);
+    buttonPanel->add(SaveButton);
+    buttonPanel->add(OpenButton);
+    buttonPanel->add(SaveAsButton);
+
+    OptionButton->onClick([&](){
+        if (!isSettingsOpened)
+        {
+            show_settings();
+        }
+    });
+
+    OpenButton->onClick([&]() {
+        if(!isOpenFromFileOpened)
+            OpenFromFIle();
+        });
+
+    SaveAsButton->onClick([&]() {
+        SaveAs();
+        });
+
+    SaveButton->onClick([&]() {
+        Save();
+        });
+
+    buttonPanel->setAutoLayout(tgui::AutoLayout::Bottom);
+
+    SaveButton->setPosition({ OptionButton->getPosition().x + OptionButton->getSize().x, OptionButton->getPosition().y });
+    SaveAsButton->setPosition({ SaveButton->getPosition().x + SaveAsButton->getSize().x, SaveButton->getPosition().y });
+    OpenButton->setPosition({ SaveAsButton->getPosition().x + SaveAsButton->getSize().x, SaveAsButton->getPosition().y});
 
     BackGround.setSize({ (float)window.getSize().x, (float)window.getSize().y });
     BackGround.setPosition({ 50.f, 0.f });
@@ -299,35 +533,49 @@ void TE::Start()
     cursorLine = 0;
     cursorColumn = 0;
 
+    std::string WindowTitle = "MLTE v" + version + " : " + m_filename;
+    std::string strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
+
     //--------/init clocks\--------
-    sf::Clock clock; // using for blinking cursor animation
-    clock.start();
+    clock.start(); // using for blinking cursor animation
 
-    const float FileLastCallDelay = 0.5f;
-    sf::Clock clock2; // using for ctrl + s lock and unlock
-    clock2.start();
+    constexpr float FileLastCallDelay = 0.5f;
+    
+    clock2.start(); // using for ctrl + s lock and unlock
 
-    sf::Clock clock3; // using for ctrl + o lock and unlock
-    clock3.start();
+    //clock3.start(); // using for ctrl + o lock and unlock
     //-----------------------------
 
-    std::string previous_filename = filename;
+    std::string previous_filename = m_filename;
 
     //---------/main-loop\---------
     while (window.isOpen())
     {
         // if user changed the file name
-        if (previous_filename != filename)
+        if (previous_filename != m_filename)
         {
-            previous_filename = filename;
+            previous_filename = m_filename;
 
-            std::string strapedFilename = filename.substr(filename.find_last_of('\\') + 1);
+            strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
+            window.setTitle("MLTE v" + version + " : " + strapedFilename);
+        }
+        if (ShowStar)
+        {
+            window.setTitle("MLTE v" + version + " : " + '*' + strapedFilename);
+        }
+        else
+        {
             window.setTitle("MLTE v" + version + " : " + strapedFilename);
         }
         while (const std::optional event = window.pollEvent())
-        {   // "close requested" event: we close the window
+        {
+            TEgui.handleEvent(*event);
+
             if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::Escape))
+            {
+                TEgui.removeAllWidgets();
                 window.close();
+            }
             if (event->is<sf::Event::Resized>())
             {   // Update view size, preserve center
                 sf::Vector2f center = view.getCenter();
@@ -348,71 +596,43 @@ void TE::Start()
             getInput(*event);
         }
 
-        // Lctrl + s \ Rctrl + s 
-        // save as \ just save
-        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl) 
-            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay ||
-            (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl) 
-                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay)
+        // LShift + Lctrl + s \ RShift + Rctrl + s 
+        // save as
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LShift) && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && !isSaveAsOpened) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LShift) && 
+                (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl) 
+                    && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S)) && !isSaveAsOpened)
+        {
+            SaveAs();
+        }
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay) ||
+            (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && clock2.getElapsedTime().asSeconds() >= FileLastCallDelay))
         {
             clock2.restart();
-            if (filename == "Untitled.txt")
-            {
-                // we should request new filename from user
-                // for this i will use windows API 
-                std::string newFileName = show_SaveAsDialog();
-                if (!newFileName.empty()) {
-
-                    filename = newFileName;
-                    if (!checkIfThereIsTxTEnding(filename))
-                        filename += ".txt";
-
-                    ReadOrWriteModule.setFileName(filename);
-                }
-            }
-            // it will just save instead of making new file!
-                std::cout << "#saved to " << filename << "!\n";                
-                ReadOrWriteModule.WriteToFile(lines);
+            Save();
         }
 
         // Lctr + O \ Rctrl + O
         // load from file
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
-            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay ||
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O) && !isOpenFromFileOpened) ||
             (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
-                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O)) && clock3.getElapsedTime().asSeconds() >= FileLastCallDelay)
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::O) && !isOpenFromFileOpened) )
         {
-            clock3.restart();
-            // i need to ask the client from where should i read
-            // i will use the win api way almost like
-            // with save as
-            std::string FromWhereToRead = show_LoadFromDialog();
-            if (!FromWhereToRead.empty()) {
-                filename = FromWhereToRead;
-                ReadOrWriteModule.setFileName(filename);
-                ReadOrWriteModule.ReadFile(); // reads from file and saves to buffer
-                lines = ReadOrWriteModule.getBuffer(); // now we need to adjsut cursorLine and cursorColumn
-                // i will set them at 0 and 0
-                // so the text in initial pos
-                cursorColumn = 0;
-                cursorLine = 0;
-                text.setPosition(TextInitialPos);
-                cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y }); // also reset the cursor
-            }
+            OpenFromFIle();
         }
-
         // ctr + p parameters
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
             && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::P)) && !isSettingsOpened ||
             (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
                 && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::P)) && !isSettingsOpened)
         {
-            isSettingsOpened = true;
-            show_settings(&window);
-            isSettingsOpened = false;
+            show_settings();
         }
 
-        //keyScroll(view, window);A
         // Prepare texts
         std::vector<sf::Text> textLines;
         std::vector<sf::Text> lineNumbers;
@@ -440,6 +660,7 @@ void TE::Start()
             t.setPosition({ TextInitialPos.x, TextInitialPos.y + i * lineSpacing });
             textLines.push_back(t);
         }
+
         Vtxt = std::move(textLines);
         lastCharSizeX = 0;
         if (!Vtxt.empty()) {
@@ -452,9 +673,7 @@ void TE::Start()
             }
         }
 
-
-
-        BackGround.setPosition({ n + lineSpacing, 0.0f });
+        //BackGround.setPosition({ n + lineSpacing, 0.0f });
 
         if (!Vtxt.empty() && allowScrolling == true)
         {
@@ -474,8 +693,9 @@ void TE::Start()
 
         window.setView(view); // Apply updated view
 
-        BackGround.setSize({ BackGround.getSize().x, std::max(BackGround.getSize().y, (lines.size() * lineSpacing + 20.f) * 2.f) });
+        //BackGround.setSize({ BackGround.getSize().x, std::max(BackGround.getSize().y, (lines.size() * lineSpacing + 20.f) * 2.f) });
 
+        BackGround.setPosition({view.getCenter().x - BackGround.getSize().x / 2.f + n + lineSpacing, view.getCenter().y - BackGround.getSize().y / 2.f });
 
         for (auto& e : Vtxt)
         {
@@ -519,6 +739,8 @@ void TE::Start()
             window.draw(lineText);
 
         window.draw(cursor);
+
+        TEgui.draw();
 
         window.display();
 
