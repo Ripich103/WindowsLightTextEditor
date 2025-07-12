@@ -4,7 +4,9 @@ TE::TE() :  ShowStar(false), isSaveAsOpened(false), isOpenFromFileOpened(false),
 font(), allowScrolling(false), cursor({ 0.f, 0.f }), Linespacing(28.f), cursorColumn(0), cursorLine(0), lastCharSizeX(0), cursorInControl(false), text(font)
 {
     text.setCharacterSize(textSize);
+    //Vtxt.resize(1);
     Vtxt.reserve(1);
+    lines.resize(1);
     lines = { "" };
     ReadOrWriteModule.setFileName(m_filename);
     TextInitialPos = { 60.f, 10.f };
@@ -65,7 +67,7 @@ std::string TE::show_SaveAsDialog() noexcept
     return "";
 }
 
-std::string TE::show_LoadFromDialog() noexcept
+std::string TE::show_LoadFromDialog(const char* filter) noexcept
 {
     char fileName[MAX_PATH] = "";
 
@@ -74,7 +76,7 @@ std::string TE::show_LoadFromDialog() noexcept
 
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL;  
-    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
+    ofn.lpstrFilter = filter;
     ofn.lpstrFile = fileName;
     ofn.nMaxFile = MAX_PATH;
     ofn.lpstrTitle = "Open From";
@@ -149,6 +151,9 @@ void TE::spritesMenu(tgui::Gui& gui)
     SetFont->setPosition({ 0, SetFont->getSize().y + SetNumBgSpriteButton->getPosition().y });
 
     // setting button function`s
+    SetFont->onClick([&]() {
+        setNewFont();
+        });
     changeToColorButton->onPress([&]() {
         colorMenu(gui);
         });
@@ -159,7 +164,7 @@ void TE::spritesMenu(tgui::Gui& gui)
 
     SetNumBgSpriteButton->onPress([&]()
         {
-            setNewNumBgTexture();
+        setNewNumBgTexture();
         });
 
 }
@@ -218,33 +223,38 @@ void TE::colorMenu(tgui::Gui& gui)
 
 void TE::setNewBgTexture()
 {
-    char fileName[MAX_PATH] = "";
+    const char* filter = "Png files(*.png)\0*.PNG\0Jpeg files(*.jpeg)\0*.jpeg\0All files (*.*)\0*.*\0\0";
+    const std::string location = show_LoadFromDialog(filter);
 
-    OPENFILENAMEA ofn;
-    ZeroMemory(&ofn, sizeof(ofn));
-
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;
-    ofn.lpstrFilter = "Png Files (*.png)\0*.png\0Jpeg Files (*.jpeg)\0*.jpeg\0";
-    ofn.lpstrFile = fileName;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrTitle = "Open From";
-    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-
-    if (GetOpenFileNameA(&ofn)) {
-        if (!bgTexture.loadFromFile(fileName))
-        {
-            throw std::runtime_error("Run time error can`t load from this png/jpeg file!");
-        }
-        else
-        {
-            BackGround.setTexture(&bgTexture);
-        }
+    if (location.size() > 0 && !bgTexture.loadFromFile(location))
+    {
+        throw std::runtime_error("Run time error can`t load from this file!");
+        return;
     }
+    
+    BackGround.setTexture(&bgTexture);
 }
 
 void TE::setNewNumBgTexture()
 {
+}
+
+void TE::setNewFont()
+{
+    const char* filter = "Font`s (*.ttf)\0 * .ttf\0All Files\0 * .*\0\0";
+    std::string location = show_LoadFromDialog(filter);
+
+    if (location.size() > 1 || GetFileAttributesA(location.c_str()) != INVALID_FILE_ATTRIBUTES)
+    {
+        if (!font.openFromFile(location))
+        {
+            MessageBoxA(NULL, "Something went wrong while trying to open ttf file", "ERROR", MB_OK | MB_ICONERROR);
+        }
+    }
+    else
+    {
+        MessageBoxA(NULL, "INVALID_FILE_ATTRIBUTES try with existing file", "ERROR", MB_OK | MB_ICONERROR);
+    }
 }
 
 void TE::OpenFromFIle()
@@ -254,7 +264,8 @@ void TE::OpenFromFIle()
     // i need to ask the client from where should i read
     // i will use the win api way almost like
     // with save as
-    std::string FromWhereToRead = show_LoadFromDialog();
+    const char* filter = "Text Files(*.txt)\0 * .txt\0All Files\0 * .*\0\0";
+    std::string FromWhereToRead = show_LoadFromDialog(filter);
     if (GetFileAttributesA(FromWhereToRead.c_str()) != INVALID_FILE_ATTRIBUTES)
     {
         if (!FromWhereToRead.empty()) {
@@ -669,7 +680,7 @@ void TE::Start()
             if (len > 0) {
                 sf::Vector2f lastCharPos = lastText.findCharacterPos(len);
                 sf::Vector2f prevCharPos = lastText.findCharacterPos(len - 1);
-                lastCharSizeX = lastCharPos.x - prevCharPos.x;
+                lastCharSizeX = static_cast<std::size_t>(lastCharPos.x - prevCharPos.x);
             }
         }
 

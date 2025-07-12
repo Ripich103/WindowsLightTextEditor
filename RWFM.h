@@ -18,7 +18,7 @@ private:
 
 public:
 
-	inline enum class StatusCodes : short {
+	enum class StatusCodes : short {
 		STATUS_OK = 1,
 		STATUS_EMPTYBUF = 2,
 		STATUS_ERROR = -1,

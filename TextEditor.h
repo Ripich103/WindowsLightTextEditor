@@ -7,8 +7,10 @@
 #include<algorithm>
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
+#include <stdexcept>
 #include "RWFM.h"
 #include <Windows.h>
+#include <thread>
 
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -76,7 +78,7 @@ private:
 
 	std::string show_SaveAsDialog() noexcept;
 
-	std::string show_LoadFromDialog() noexcept;
+	std::string show_LoadFromDialog(const char* filter) noexcept;
 
 	void show_settings();
 
@@ -87,6 +89,8 @@ private:
 	void setNewBgTexture();
 
 	void setNewNumBgTexture();
+
+	void setNewFont();
 
 public:
 	TE();
