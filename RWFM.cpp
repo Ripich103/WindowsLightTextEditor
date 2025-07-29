@@ -10,7 +10,7 @@ RWFM::RWFM() : m_code(StatusCodes::STATUS_CONSTRUCTED), m_filename("")
 	m_buffer.reserve(1024);
 }
 
-RWFM::RWFM(const std::string& filename) : m_code(StatusCodes::STATUS_CONSTRUCTED), m_filename(filename)
+RWFM::RWFM(std::string_view filename) : m_code(StatusCodes::STATUS_CONSTRUCTED), m_filename(filename)
 {
 	m_buffer.reserve(1024);
 }
@@ -20,7 +20,7 @@ const std::vector<std::string>& RWFM::getBuffer() const noexcept
 	return m_buffer;
 }
 
-const std::string& RWFM::getFileName() const noexcept
+std::string_view RWFM::getFileName() const noexcept
 {
 	return m_filename;
 }
