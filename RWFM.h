@@ -4,6 +4,7 @@
 #include<fstream>
 #include<string>
 #include<vector>
+#include<string_view>
 
 class RWFM // RWFC - Read and Write to File Module
 {
@@ -28,11 +29,11 @@ public:
 	const StatusCodes& getStatusCode() const noexcept;
 
 	explicit RWFM();
-	RWFM(const std::string& filename);
+	RWFM(std::string_view filename);
 
 	const std::vector<std::string>& getBuffer() const noexcept;
 
-	const std::string& getFileName() const noexcept;
+	std::string_view getFileName() const noexcept;
 
 	void setFileName(const std::string& new_filename) noexcept;
 
