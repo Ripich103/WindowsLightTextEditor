@@ -1,4 +1,4 @@
-#include "RWFM.h"
+#include "RWFM.hpp"
 
 const RWFM::StatusCodes& RWFM::getStatusCode() const noexcept
 {

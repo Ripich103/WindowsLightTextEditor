@@ -18,18 +18,18 @@
     <ClCompile Include="main.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="TextEditor.cpp">
+    <ClCompile Include="text_editor\TextEditor.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="RWFM.cpp">
+    <ClCompile Include="read_write_file_module\RWFM.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TextEditor.h">
+    <ClInclude Include="RWFM.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="RWFM.h">
+    <ClInclude Include="text_editor\TextEditor.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

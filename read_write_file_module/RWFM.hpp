@@ -1,18 +1,18 @@
-#ifndef RWFM_H
-#define RWFM_H
+#ifndef RWFM_HPP
+#define RWFM_HPP
 
 #include<fstream>
 #include<string>
 #include<vector>
 #include<string_view>
 
-class RWFM // RWFC - Read and Write to File Module
+class RWFM // RWFC - read or write to file Module
 {
 private:
 	std::string m_filename;
 	std::vector<std::string> m_buffer;
 
-	inline bool is_empty(std::ifstream& pFile)
+	static inline bool is_empty(std::ifstream& pFile)
 	{
 		return pFile.peek() == std::ifstream::traits_type::eof();
 	}

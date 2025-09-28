@@ -132,12 +132,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RWFM.cpp" />
-    <ClCompile Include="TextEditor.cpp" />
+    <ClCompile Include="read_write_file_module\RWFM.cpp" />
+    <ClCompile Include="text_editor\TextEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RWFM.h" />
-    <ClInclude Include="TextEditor.h" />
+    <ClInclude Include="RWFM.hpp" />
+    <ClInclude Include="text_editor\TextEditor.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

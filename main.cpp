@@ -1,11 +1,10 @@
-#include"TextEditor.h"
+#include "text_editor/TextEditor.hpp"
 
 // today todo
-// 1.Cursor size changer and cursor type changer instead of NumBgSpritePicker
 
 int main()
 {
-	TE app;
-	app.Start();
+	TE notepad;
+	notepad.Start();
 	return 0;
 }

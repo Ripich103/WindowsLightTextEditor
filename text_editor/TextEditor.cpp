@@ -1,7 +1,15 @@
-#include "TextEditor.h"
+#include "TextEditor.hpp"
 
-TE::TE() : FirstVisibleLineVtxt(0), LastVisibleLineVtxt(0), allowVtxtConstructing(true), textScaling(1.f), BiggestLineIdx(0), transparentCursor(true), ShowStar(false), isSaveAsOpened(false), isOpenFromFileOpened(false), CursorColor(sf::Color::White), NumColor(sf::Color::White), TextColor(sf::Color::White), isSettingsOpened(false), m_filename("Untitled.txt"), version("alpha"), BackGround({0.f, 0.f}), textSize(18),
-font(), allowScrolling(false), cursor({ 0.f, 0.f }), lineSpacing(0), numberSpacing(0), cursorColumn(0), cursorLine(0), lastCharSizeX(0), text(font)
+TE::TE() : m_textSpacing(2.f), FirstVisibleLineVtxt(0), LastVisibleLineVtxt(0),
+           allowVtxtConstructing(true), textScaling(1.f), BiggestLineIdx(0),
+           transparentCursor(true), ShowStar(false), isSaveAsOpened(false), isOpenFromFileOpened(false),
+           CursorColor(sf::Color::White), NumColor(sf::Color::White),
+           TextColor(sf::Color::White), isSettingsOpened(false), m_filename("Untitled.txt"), version("alpha"),
+           BackGround({ 0.f, 0.f }), textSize(16),
+           font(), allowScrolling(false), cursor({ 0.f, 0.f }), lineSpacing(23.f), numberSpacing(0),
+           cursorColumn(0), cursorLine(0), lastCharSizeX(0), text(font), m_selected(false), m_begin_selected_x(0),
+           m_end_selected_x(0), m_begin_selected_y(0), m_end_selected_y(0), m_selected_area(), m_selectedLines_list(),
+           m_char_width(0.f), m_line_height(0.f), m_stopedSelecting(true)
 {
     text.setCharacterSize(textSize);
     Vtxt.reserve(1);
@@ -88,10 +96,51 @@ std::string TE::show_LoadFromDialog(std::string_view filter) noexcept
     return std::string("");
 }
 
+std::string TE::getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey)
+{
+    m_selectedLines_list.clear();
+    std::string selected_str;
+
+    if (Sy > Ey || (Sy == Ey && Sx > Ex))
+    {
+        std::swap(Sx, Ex);
+        std::swap(Sy, Ey);
+    }
+
+    //int size = std::abs(static_cast<int>(Sx) - static_cast<int>(Ex));
+    for (int i = Sy; i <= Ey; ++i)
+    {
+        std::size_t start = (i == Sy ? Sx : 0);
+        std::size_t end = (i == Ey ? Ex : lines[i].size());
+
+        if (start > lines[i].size()) start = lines[i].size();
+        if (end > lines[i].size()) end = lines[i].size();
+
+        selected_str += lines[i].substr(start, end - start);
+        if (i != Ey) selected_str += '\n';
+
+        float fallbackY = TextInitialPos.y + i * lineSpacing * textScaling;
+        float fallbackX = Vtxt[0].getPosition().x + start * m_char_width * textScaling;
+
+        sf::RectangleShape _line;
+        _line.setScale({ 1.f, 1.f });
+        _line.setSize({ static_cast<float>((end - start) * m_char_width * textScaling), static_cast<float>(textSize) * textScaling });
+        _line.setPosition({ fallbackX, fallbackY });
+        _line.setFillColor(sf::Color(0, 255, 255, 100));
+
+        m_selectedLines_list.push_back(_line);
+    }
+    
+
+    return selected_str;
+}
+
 void TE::show_settings()
 {
     isSettingsOpened = true;
-    sf::RenderWindow settingsWindow(sf::VideoMode({ 1000, 500 }), "Settings");
+    sf::RenderWindow settingsWindow(sf::VideoMode({ 1000, 500 }), "Settings", sf::Style::Close | sf::Style::Titlebar);
+
+    settingsWindow.setSize({ 1000, 500 });
     tgui::Gui gui(settingsWindow);
 
     colorMenu(gui);
@@ -122,14 +171,17 @@ void TE::spritesMenu(tgui::Gui& gui)
 {
     gui.removeAllWidgets();
     // cuz i want to have window have the size of a button
-    auto SetNumBgSpriteButton = tgui::Button::create("Change numbers background image");
     
-    gui.getWindow()->setSize({static_cast<unsigned int>(SetNumBgSpriteButton->getSize().x + 10),static_cast<unsigned int>(SetNumBgSpriteButton->getSize().y * 7 + 10)});
+    auto SetBgSprite = tgui::Button::create("Change background image");
+    //gui.getWindow()->setSize({static_cast<unsigned int>(SetBgSprite->getSize().x + 100),static_cast<unsigned int>(SetBgSprite->getSize().y * 7 + 100)});
 
     auto SpritePickPanel = tgui::Panel::create({ (double)gui.getWindow()->getSize().x ,(double)gui.getWindow()->getSize().y });
     auto changeToColorButton = tgui::Button::create("Color menu");
-    auto SetBgSprite = tgui::Button::create("Change background image");
+    auto SetCursorSize = tgui::EditBoxSlider::create(2.f, 10.f, cursor.getSize().x, 1, 0.1f);
+    auto TextSizeSlider = tgui::EditBoxSlider::create(16, 38, textSize, 0, 1);
     auto SetFont = tgui::Button::create("Change fonts");
+    auto CursorTextLabel = tgui::Label::create("Change cursor size: ");
+    auto TextSizeLabel = tgui::Label::create("Change text size: ");
 
     sf::Font N_font;
 
@@ -139,15 +191,35 @@ void TE::spritesMenu(tgui::Gui& gui)
 
     // adding to panel
     SpritePickPanel->add(changeToColorButton);
+    SpritePickPanel->add(CursorTextLabel);
     SpritePickPanel->add(SetBgSprite);
-    SpritePickPanel->add(SetNumBgSpriteButton);
+    SpritePickPanel->add(SetCursorSize);
+    SpritePickPanel->add(TextSizeSlider);
+    SpritePickPanel->add(TextSizeLabel);
     SpritePickPanel->add(SetFont);
 
-    // setting position
+    // setting position and adjusting
+    CursorTextLabel->setSize({150.f, 25.f});
+    CursorTextLabel->setTextSize(13);
+    CursorTextLabel->getRenderer()->setTextColor(tgui::Color::White);
+
+    TextSizeLabel->setSize({ 150.f, 25.f });
+    TextSizeLabel->setTextSize(13);
+    TextSizeLabel->getRenderer()->setTextColor(tgui::Color::White);
+
     changeToColorButton->setWidth(SpritePickPanel->getSize().x);
-    SetBgSprite->setPosition({ 0, SetBgSprite->getSize().y + changeToColorButton->getPosition().y });
-    SetNumBgSpriteButton->setPosition({ 0, SetNumBgSpriteButton->getSize().y + SetBgSprite->getPosition().y });
-    SetFont->setPosition({ 0, SetFont->getSize().y + SetNumBgSpriteButton->getPosition().y });
+
+    SetBgSprite->setPosition({ 0.f, SetBgSprite->getSize().y + changeToColorButton->getPosition().y });
+
+    CursorTextLabel->setPosition({ 0.f, SetBgSprite->getPosition().y + CursorTextLabel->getSize().y});
+
+    SetCursorSize->setPosition({ 0.f, SetCursorSize->getSize().y + CursorTextLabel->getPosition().y });
+
+    TextSizeLabel->setPosition({ 0.f, SetCursorSize->getPosition().y + TextSizeLabel->getSize().y + 5.f });
+
+    TextSizeSlider->setPosition({ 0.f, TextSizeLabel->getPosition().y + TextSizeSlider->getSize().y });
+
+    SetFont->setPosition({ 0, SetFont->getSize().y + TextSizeSlider->getPosition().y + 10.f });
 
     // setting button function`s
     SetFont->onClick([&]() {
@@ -161,11 +233,15 @@ void TE::spritesMenu(tgui::Gui& gui)
         setNewBgTexture();
         });
 
-    SetNumBgSpriteButton->onPress([&]()
-        {
-        setNewNumBgTexture();
+    SetCursorSize->onValueChange([&](const float value) {
+        cursor.setSize({ value,cursor.getSize().y });
         });
 
+    TextSizeSlider->onValueChange([&](const int value) {
+        textSize = value;
+        lineSpacing = static_cast<float>(value) * 1.5f;
+        allowVtxtConstructing = true;
+        });
 }
 
 void TE::colorMenu(tgui::Gui& gui)
@@ -222,7 +298,7 @@ void TE::colorMenu(tgui::Gui& gui)
 
 void TE::setNewBgTexture()
 {
-    const char* filter = "Png files(*.png)\0*.PNG\0Jpeg files(*.jpeg)\0*.jpeg\0All files (*.*)\0*.*\0\0";
+    const char* filter = "Png files(*.png)\0*.png\0Jpeg files(*.jpeg)\0*.jpeg\0Jpg files(*.jpg)\0*.jpg\0All files (*.*)\0*.*\0\0";
     const std::string location = show_LoadFromDialog(filter);
 
     if (location.size() > 0 && !bgTexture.loadFromFile(location))
@@ -230,12 +306,8 @@ void TE::setNewBgTexture()
         throw std::runtime_error("Run time error can`t load from this file!");
         return;
     }
-    
     BackGround.setTexture(&bgTexture);
-}
-
-void TE::setNewNumBgTexture()
-{
+    BackGround.setFillColor(sf::Color::White);
 }
 
 void TE::setNewFont()
@@ -254,20 +326,20 @@ void TE::setNewFont()
     {
         MessageBoxA(NULL, "INVALID_FILE_ATTRIBUTES maybe you declined", "ERROR", MB_OK | MB_ICONERROR);
     }
+
+    m_char_width = font.getGlyph('M', textSize, false).advance;
+    m_line_height = font.getLineSpacing(textSize);
 }
 
 void TE::constructVtxt(const sf::View& v)
 {
     // Prepare texts
     lineNumbers.clear();
-    textLines.clear();
     Vtxt.clear();
     lineNumbers.reserve(lines.size());
-    textLines.reserve(lines.size());
     Vtxt.reserve(lines.size());
 
     BiggestLineIdx = 0;
-    lineSpacing = text.getLineSpacing() + 23.f;
 
     std::size_t tempidx = 0;
     float lineSize = 0;
@@ -280,12 +352,12 @@ void TE::constructVtxt(const sf::View& v)
 
     for (std::size_t i = FirstVisibleLineVtxt; i < LastVisibleLineVtxt; ++i)
     {
-        // Line number
+        // Line numbers
         sf::Text num(font);
         num.setCharacterSize(textSize);
         num.setString(std::to_string(i + 1));
         num.setFillColor(NumColor);
-        num.setScale({textScaling, textScaling});
+        num.setScale({ textScaling, textScaling });
         num.setPosition({ 10.f, 10.f + i * lineSpacing * textScaling });
         lineNumbers.push_back(num);
 
@@ -298,12 +370,14 @@ void TE::constructVtxt(const sf::View& v)
 
         sf::Text t(font);
         t.setString(lines[i]);
+        //t.setLetterSpacing(m_textSpacing);
         t.setPosition({ TextInitialPos.x, TextInitialPos.y + i * lineSpacing * textScaling });
         t.setCharacterSize(textSize);
         t.setFillColor(TextColor);
-        t.setScale({textScaling, textScaling});
+        t.setScale({ textScaling, textScaling });
+
         const float size = t.getGlobalBounds().size.x;
-        textLines.push_back(t);
+        Vtxt.push_back(t);
 
         const float oldLineSize = lineSize;
         lineSize = std::max(lineSize, size);
@@ -316,7 +390,6 @@ void TE::constructVtxt(const sf::View& v)
 
     BiggestLineIdx = tempidx;
 
-    Vtxt = std::move(textLines);
     lastCharSizeX = 0;
     if (!Vtxt.empty()) {
         const auto& lastText = Vtxt.back();
@@ -352,6 +425,111 @@ void TE::resizeWindow(const sf::Event& event, sf::View& view, sf::RenderWindow& 
     BackGround.setSize({ (float)view.getSize().x, (float)view.getSize().y });
 }
 
+void TE::pasteFromClipBoard()
+{
+    if (!OpenClipboard(NULL))
+    {
+        return;
+    }
+    else
+    {
+        HANDLE hndl = GetClipboardData(CF_TEXT);
+        if (hndl != NULL)
+        {
+            char* buff = static_cast<char*>(GlobalLock(hndl));
+            if (buff != NULL)
+            {
+                int linescount = 0;
+                for (char* i = buff; *i != '\0'; ++i)
+                {
+                    if (*i == '\n')
+                    {
+                        ++linescount;
+                    }
+                }
+                if (linescount > 0)
+                {
+                    std::vector<std::string> pasted_lines;
+                    pasted_lines.reserve(linescount);
+                    std::string accum;
+                    char* j = buff;
+                    for (; *j != '\0'; ++j)
+                    {
+                        accum += *j;
+                        if (*j == '\n')
+                        {
+                            pasted_lines.push_back(accum);
+                            accum.clear();
+                        }
+                    }
+                    if (!accum.empty())
+                        pasted_lines.push_back(accum);
+
+                    std::string left = lines[cursorLine].substr(0, cursorColumn);
+                    std::string right = lines[cursorLine].substr(cursorColumn);
+                    lines[cursorLine] = left;
+                    for (int i = 0; i < pasted_lines.size(); ++i)
+                    {
+                        lines.insert(lines.begin() + cursorLine, pasted_lines[i]);
+                        ++cursorLine;
+                    }
+
+                    lines.insert(lines.begin() + cursorLine - 1, right);
+                }
+                else
+                {
+                    lines[cursorLine].insert(cursorColumn, std::string(buff));
+                }
+
+                GlobalUnlock(hndl);
+                allowVtxtConstructing = true;
+            }
+        }
+        CloseClipboard();
+    }
+}
+
+
+void TE::copyToClipboard()
+{
+    if (m_selected_area.empty())
+        return;
+    if (!OpenClipboard(NULL))
+    {
+        return;
+    }
+    else
+    {
+        EmptyClipboard();
+
+        std::size_t b_size = m_selected_area.size() / sizeof(char) + 1;
+
+        HGLOBAL allocated_chunk = GlobalAlloc(GMEM_MOVEABLE, b_size);
+        if (allocated_chunk == NULL)
+        {
+            CloseClipboard();
+            return;
+        }
+
+        char* pointer_to_chunk = static_cast<char*>(GlobalLock(allocated_chunk));
+        if (pointer_to_chunk == NULL)
+        {
+            GlobalFree(allocated_chunk);
+            CloseClipboard();
+            return;
+        }
+
+        strcpy_s(pointer_to_chunk, b_size, m_selected_area.c_str());
+
+        GlobalUnlock(allocated_chunk);
+        
+        if (SetClipboardData(CF_TEXT, allocated_chunk) == NULL) {
+            GlobalFree(allocated_chunk);
+        }
+        CloseClipboard();
+    }
+}
+
 void TE::OpenFromFIle()
 {
     isOpenFromFileOpened = true;
@@ -370,7 +548,9 @@ void TE::OpenFromFIle()
 
             if (ReadOrWriteModule.getStatusCode() == RWFM::StatusCodes::STATUS_EMPTYBUF)
             {
+                #ifdef DEBUG
                 std::cout << "EMPTY BUF";
+                #endif
                 lines.clear();
                 lines = { "" };
             }
@@ -384,7 +564,6 @@ void TE::OpenFromFIle()
             cursorColumn = 0;
             cursorLine = 0;
             text.setPosition(TextInitialPos);
-            cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y }); // also reset the cursor
             allowVtxtConstructing = true;
         }
     }
@@ -413,7 +592,6 @@ void TE::SaveAs()
         // user refused to save the file
         return;
     }
-    //std::cout << "#saved to " << filename << "!\n";
     ReadOrWriteModule.WriteToFile(lines);
 
     ShowStar = false;
@@ -448,6 +626,7 @@ void TE::getInput(const sf::Event& event)
                 cursorColumn--;
                 lines[cursorLine].erase(cursorColumn, 1);
                 allowVtxtConstructing = true;
+                m_selected = false;
             }
             else if (cursorLine > 0)
             {
@@ -457,36 +636,37 @@ void TE::getInput(const sf::Event& event)
                 lines.erase(lines.begin() + cursorLine);
                 cursorLine--;
                 allowVtxtConstructing = true;
+                m_selected = false;
             }
 
             allowScrolling = true;
             ShowStar = true;
+            m_selected = false;
         }
         else if (typed == 13 || typed == '\n') // Enter
         {
-            std::string current = lines[cursorLine];
-            std::string left = current.substr(0, cursorColumn);
-            std::string right = current.substr(cursorColumn);
+            std::string left = lines[cursorLine].substr(0, cursorColumn);
+            std::string right = lines[cursorLine].substr(cursorColumn);
 
             lines[cursorLine] = left;
-            lines.insert(lines.begin() + cursorLine + 1, right);
-
             cursorLine += 1;
             cursorColumn = 0;
+            lines.insert(lines.begin() + cursorLine, right);
 
             allowScrolling = true;
             allowVtxtConstructing = true;
             ShowStar = true;
+            m_selected = false;
         }
-        else if (typed >= 32 && typed < 127) // Printable ASCII
+        else if (typed >= 32 && typed < 127) // chars
         {
             lines[cursorLine].insert(lines[cursorLine].begin() + cursorColumn, typed);
             cursorColumn += 1;
             allowVtxtConstructing = true;
             allowScrolling = true;
             ShowStar = true;
+            m_selected = false;
         }
-        
     }
 }
 
@@ -505,7 +685,7 @@ void TE::scrollHoryzontal(const sf::Event& event, sf::View& v, const sf::RenderW
     float minX = ViewLeftBorder;
 
     float max_X = minX;
-    if (!Vtxt.empty())
+    if (!Vtxt.empty() && BiggestLineIdx < Vtxt.size())
     {
         const sf::Text& LineWithBiggestX = Vtxt[BiggestLineIdx];
         const float lastLineWidth = LineWithBiggestX.getPosition().x + LineWithBiggestX.getGlobalBounds().size.x;
@@ -565,6 +745,10 @@ void TE::handleCursor(const std::vector<std::string>& t, sf::Keyboard::Scancode 
 {
     CursorIdleTime.restart();
     setCursorVisible();
+    if (m_selected) {
+        m_end_selected_x = cursorColumn;
+        m_end_selected_y = cursorLine;
+    }
     if (t.empty()) return;
     if (keyCode == sf::Keyboard::Scancode::Up)
     {
@@ -588,7 +772,7 @@ void TE::handleCursor(const std::vector<std::string>& t, sf::Keyboard::Scancode 
 
 void TE::Start()
 {
-    sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "MLTE v" + version + " : " + m_filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
+    sf::RenderWindow window(sf::VideoMode({ 1000, 700 }), "MLTE v" + version + " : " + m_filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
 
@@ -662,15 +846,27 @@ void TE::Start()
     BackGround.setPosition({ 0.f, 0.f });
     BackGround.setFillColor(sf::Color::Black);
 
-    if (!font.openFromFile("Font\\pixel.ttf"))
+    if (!font.openFromFile("..\\DebugFont\\Font\\pixel.ttf"))
     {
-        return;
+        int res = MessageBoxA(0, "Font not found or failed to load.\nLoad manually please", "Error", MB_OKCANCEL | MB_ICONWARNING);
+
+        switch (res)
+        {
+        case IDCANCEL:
+            return;
+            break;
+        case IDOK:
+            setNewFont();
+            break;
+        default:
+            break;
+        }
     }
 
     text.setPosition(TextInitialPos);
     text.setFillColor(sf::Color::White);
 
-    cursor.setSize({ 2.f, (float)text.getCharacterSize() });
+    cursor.setSize({ 2.f, static_cast<float>(textSize) });
     cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y });
     cursor.setFillColor(sf::Color::White);
 
@@ -678,17 +874,27 @@ void TE::Start()
     std::string strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
 
     //--------/init clocks\--------
-    blinkingCursorDelayClock.start(); // using for blinking cursor animation
 
-    constexpr float FileLastCallDelay = 0.5f;
-    
+    constexpr float LastFileCallDelay = 0.5f;
+
+    sf::Clock ClipBoardAccessClock;
+    sf::Clock SelectAllAccessClock;
+
+    SelectAllAccessClock.start(); // using for select all lock
+    ClipBoardAccessClock.start(); // for clipboard access lock
     SaveAsDelayClock.start(); // using for ctrl + s lock and unlock
-
-    CursorIdleTime.start();
+    blinkingCursorDelayClock.start(); // using for blinking with cursor anim
+    CursorIdleTime.start(); // cursor idle anim
     //-----------------------------
 
     std::string previous_filename = m_filename;
     constexpr const float zoomInVal = 0.9f;
+
+    sf::RectangleShape ray;
+    ray.setFillColor(sf::Color::Green);
+    ray.setPosition({ 50, 100 });
+    ray.setSize({-static_cast<float>(window.getSize().x), 28});
+
     //---------/main-loop\---------
     while (window.isOpen())
     {
@@ -762,14 +968,18 @@ void TE::Start()
                 {
                     allowScrolling = true;
                     handleCursor(lines, sc);
+                    if (m_stopedSelecting)
+                    {
+                        m_selected = false;
+                    }
                 }
             }
 
             getInput(*event);
         }
 
-        // LShift + Lctrl + s \ RShift + Rctrl + s 
-        // save as
+        // LShift + Lctrl + S \ RShift + Rctrl + S
+        // save to file
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LShift) && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
             && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && !isSaveAsOpened) ||
             sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LShift) &&
@@ -778,10 +988,13 @@ void TE::Start()
         {
             SaveAs();
         }
+
+        // Lctrl + S \ Rctrl + S
+        // quick save
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
-            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && SaveAsDelayClock.getElapsedTime().asSeconds() >= FileLastCallDelay) ||
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && SaveAsDelayClock.getElapsedTime().asSeconds() >= LastFileCallDelay) ||
             (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RControl)
-                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && SaveAsDelayClock.getElapsedTime().asSeconds() >= FileLastCallDelay))
+                && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::S) && SaveAsDelayClock.getElapsedTime().asSeconds() >= LastFileCallDelay))
         {
             SaveAsDelayClock.restart();
             Save();
@@ -796,7 +1009,8 @@ void TE::Start()
         {
             OpenFromFIle();
         }
-        // ctr + p parameters
+        // Lctr + P \ Rctrl + P
+        // parameters
         if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
             && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::P)) && !isSettingsOpened ||
             (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RControl)
@@ -804,6 +1018,66 @@ void TE::Start()
         {
             show_settings();
         }
+
+        // Lctr + V \ Rctrl + V
+        // paste from clipboard
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::V) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::V)) && ClipBoardAccessClock.getElapsedTime().asSeconds() >= 0.6f)
+        {
+            ClipBoardAccessClock.restart();
+            pasteFromClipBoard();
+            m_selected = false;
+        }
+
+        // Lctr + C \ Rctrl + C
+        // copy to clipboard
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::C) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::C)) && ClipBoardAccessClock.getElapsedTime().asSeconds() >= 0.6f)
+        {
+            ClipBoardAccessClock.restart();
+            copyToClipboard();
+        }
+
+        // Lctr + A \ Rctrl + A
+        // select all
+        if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::A) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RControl)
+            && sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::A)) && SelectAllAccessClock.getElapsedTime().asSeconds() >= 0.8f)
+        {
+            SelectAllAccessClock.restart();
+            m_selected_area = getSelectedString(0, 0, lines[lines.size() - 1].size(), lines.size()-1);
+            m_selected = true;
+        }
+
+        //LShift \ RShift - text selection
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::LShift) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::RShift) )
+        {
+            if (!m_selected) {
+                m_selected = true;
+                m_stopedSelecting = false;
+                m_begin_selected_x = cursorColumn;
+                m_begin_selected_y = cursorLine;
+            }
+
+            if (m_selected)
+            {
+                m_end_selected_x = cursorColumn;
+                m_end_selected_y = cursorLine;
+
+                m_selected_area = getSelectedString(m_begin_selected_x, m_begin_selected_y, m_end_selected_x, m_end_selected_y);
+            }
+        }
+        else
+        {
+            m_stopedSelecting = true;
+        }
+
         if(allowVtxtConstructing)
         {
             constructVtxt(view);
@@ -889,7 +1163,14 @@ void TE::Start()
                 window.draw(num);
             }
         }
+        
+        if (m_selected)
+        {
+            for (auto& rect : m_selectedLines_list)
+                window.draw(rect);
+        }
 
+        // text
         for (auto& lineText : Vtxt)
         {
             float tempY = lineText.getPosition().y;
@@ -906,7 +1187,7 @@ void TE::Start()
                     sf::Text Temp(lineText);
                     std::string accumulativeStr = "";
 
-                    for (const char& c : lineText.getString())
+                    for (const char32_t& c : lineText.getString())
                     {
                         accumulativeStr += c;
                         Temp.setString(accumulativeStr);
@@ -932,17 +1213,21 @@ void TE::Start()
         {
             const std::size_t relativeIndex = cursorLine - FirstVisibleLineVtxt;
             if (relativeIndex < Vtxt.size())
-                cursor.setPosition(Vtxt[relativeIndex].findCharacterPos(cursorColumn));
+            {
+                const sf::Vector2f position = Vtxt[relativeIndex].findCharacterPos(cursorColumn);
+                const float cursorRightBound = cursor.getSize().x;
+                cursor.setPosition({ position.x - cursorRightBound, position.y});
+            }
         }
         else
         {
-            // Fallback for safety: estimate position even if line is offscreen
             const float fallbackY = TextInitialPos.y + cursorLine * lineSpacing * textScaling;
             const float fallbackX = TextInitialPos.x + cursorColumn * lastCharSizeX;
             cursor.setPosition({ fallbackX, fallbackY });
         }
 
         cursor.setScale({ textScaling, textScaling });
+        cursor.setSize({ cursor.getSize().x, static_cast<float>(textSize) });
         window.draw(cursor);
 
         TEgui.draw();
@@ -967,6 +1252,5 @@ void TE::Start()
         }
     }
     //-----------------------------
-
     return;
 }
