@@ -1,17 +1,25 @@
-WLTE TODO:
--
-~~1.FONTS CHANGER~~
+# WLTE(C) Project
 
-2.HELP BUTTON
+**WLTE(C)** stands for **Windows Lightweight Text Editor (Customizable)**.  
+This project was created to expand my knowledge in the **software engineering** field.
 
-3.SHORTCUTS
+## Features
 
-4.copy + paste from to buffer
+- Lightweight and fast text editor
+- Customizable interface (fonts, colors, etc.)
+- Clipboard support (copy & paste)
+- Planned support for shortcuts and configuration file
+- I/O operations (write to file, read from file)
 
-5.CURSOR FROM MOUSE INPUT CONTROL
+## TODO List
 
-6.NEED TO ADD SETTINGS.CFG  SO IT WILL SAVE YOUR SETTINGS AND CAN LOAD IT
+- [ ] Various customizations
+- [ ] Help button
+- [ ] Shortcuts
+- [ ] Configuration file (`settings.cfg`) to save/load user settings
+- [ ] Icon
+- [ ] Refactor this README
 
-7.ICON
+## Installation
 
-8.A GOOD README
+## Usage
