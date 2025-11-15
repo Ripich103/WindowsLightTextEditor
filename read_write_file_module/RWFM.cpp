@@ -5,14 +5,26 @@ const RWFM::StatusCodes& RWFM::getStatusCode() const noexcept
 	return m_code;
 }
 
-RWFM::RWFM() : m_code(StatusCodes::STATUS_CONSTRUCTED), m_filename("")
+RWFM::RWFM() : m_code(StatusCodes::STATUS_CONSTRUCTED), m_path("")
 {
 	m_buffer.reserve(1024);
 }
 
-RWFM::RWFM(std::string_view filename) : m_code(StatusCodes::STATUS_CONSTRUCTED), m_filename(filename)
+RWFM::RWFM(std::string_view path) : m_code(StatusCodes::STATUS_CONSTRUCTED), m_path(path)
 {
 	m_buffer.reserve(1024);
+}
+
+RWFM::RWFM(std::string&& path) : m_code(StatusCodes::STATUS_CONSTRUCTED), m_path(std::move(path))
+{
+	m_buffer.reserve(1024);
+}
+
+RWFM::~RWFM()
+{
+	m_buffer.clear();
+	m_path.clear();
+	m_code = StatusCodes::STATUS_EMPTYBUF;
 }
 
 const std::vector<std::string>& RWFM::getBuffer() const noexcept
@@ -20,23 +32,37 @@ const std::vector<std::string>& RWFM::getBuffer() const noexcept
 	return m_buffer;
 }
 
-std::string_view RWFM::getFileName() const noexcept
+std::vector<std::string>& RWFM::getBuffer() noexcept
 {
-	return m_filename;
+	return m_buffer;
 }
 
-void RWFM::setFileName(const std::string& new_filename) noexcept
+std::string_view RWFM::getFileName() const noexcept
 {
-	if (new_filename == m_filename)
+	return m_path;
+}
+
+void RWFM::setFileName(const std::string& new_path) noexcept
+{
+	if (new_path == m_path)
 		return;
 
-	m_filename = new_filename;
+	m_path = new_path;
+}
+
+void RWFM::setFileName(std::string&& new_path) noexcept
+{
+	if (new_path == m_path)
+		return;
+
+	m_path = std::move(new_path);
 }
 
 RWFM::StatusCodes RWFM::ReadFile()
 {
 	m_buffer.clear();
-	std::ifstream readF(m_filename);
+	std::ifstream readF(m_path);
+
 	if (!readF.is_open())
 	{
 		m_code = StatusCodes::STATUS_ERROR;
@@ -46,6 +72,7 @@ RWFM::StatusCodes RWFM::ReadFile()
 	if (is_empty(readF))
 	{
 		m_code = StatusCodes::STATUS_EMPTYBUF;
+		readF.close();
 		return m_code;
 	}
 
@@ -56,12 +83,13 @@ RWFM::StatusCodes RWFM::ReadFile()
 	}
 
 	m_code = StatusCodes::STATUS_OK;
+	readF.close();
 	return m_code;
 }
 
 RWFM::StatusCodes RWFM::WriteToFile(const std::vector<std::string>& data)
 {
-	std::ofstream writeF(m_filename, std::ios::trunc);
+	std::ofstream writeF(m_path, std::ios::trunc);
 	if (!writeF.is_open())
 	{
 		m_code = StatusCodes::STATUS_ERROR;
@@ -72,5 +100,6 @@ RWFM::StatusCodes RWFM::WriteToFile(const std::vector<std::string>& data)
 		writeF << line << '\n';
 
 	m_code = StatusCodes::STATUS_OK;
+	writeF.close();
 	return m_code;
 }
