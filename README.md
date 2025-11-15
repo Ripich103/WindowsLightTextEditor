@@ -13,11 +13,7 @@ This project was created to expand my knowledge in the **software engineering** 
 
 ## TODO List
 
-- [ ] Various customizations
-- [ ] Help button
-- [ ] Shortcuts
-- [ ] Configuration file (`settings.cfg`) to save/load user settings
-- [ ] Icon
+- [ ] Wide strings support
 - [ ] Refactor this README
 
 ## Installation
