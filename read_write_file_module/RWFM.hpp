@@ -9,7 +9,7 @@
 class RWFM // RWFC - read or write to file Module
 {
 private:
-	std::string m_filename;
+	std::string m_path;
 	std::vector<std::string> m_buffer;
 
 	static inline bool is_empty(std::ifstream& pFile)
@@ -29,13 +29,17 @@ public:
 	const StatusCodes& getStatusCode() const noexcept;
 
 	explicit RWFM();
-	RWFM(std::string_view filename);
+	RWFM(std::string_view path);
+	RWFM(std::string&& path);
+	~RWFM();
 
 	const std::vector<std::string>& getBuffer() const noexcept;
+	std::vector<std::string>& getBuffer() noexcept;
 
 	std::string_view getFileName() const noexcept;
 
-	void setFileName(const std::string& new_filename) noexcept;
+	void setFileName(const std::string& new_path) noexcept;
+	void setFileName(std::string&& new_path) noexcept;
 
 	StatusCodes ReadFile();
 

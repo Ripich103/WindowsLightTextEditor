@@ -3,7 +3,6 @@
 
 // for refactoring add member prefix - 'm_...'
 
-#include<iostream> // for debuging
 #include<vector>
 #include<string>
 #include <SFML/Graphics.hpp>
@@ -13,24 +12,36 @@
 #include <Windows.h>
 #include <WinUser.h>
 #include <list>
-
+#include <array>
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
 
 #define DEBUG 1
 
+constexpr const char* CE_DEFAULT_CONFIG_NAME = "settings\\D_SETTINGS.cfg";
+constexpr const char* CE_CUSTOM_CONFIG_NAME  = "settings\\C_SETTINGS.cfg";
+constexpr const char* CE_STARTUP_NAME = "settings\\startup.cfg";
+
 class TE
 {
 private:
 	using ui = unsigned int;
+
+	const std::filesystem::path m_base_path = std::filesystem::current_path();
+
 	sf::Clock SaveAsDelayClock;
 	sf::Clock blinkingCursorDelayClock;
 	sf::Clock CursorIdleTime;
+
+	std::array<void*, 11> cfg_settings;
+
+	std::map<std::string, std::string> m_cfgmap;
 
 	std::vector<std::string> lines;
 	std::vector<sf::Text> Vtxt;
 	std::vector<sf::Text> lineNumbers;
 	sf::Vector2f TextInitialPos;
+	sf::Vector2f m_CursorSize;
 
 	std::list<sf::RectangleShape> m_selectedLines_list;
 	
@@ -41,6 +52,8 @@ private:
 	sf::Color TextColor;
 	sf::Color NumColor;
 	sf::Color CursorColor;
+	sf::Color m_BackGroundColor;
+	sf::Color m_LastUsedBgColor;
 
 	sf::RectangleShape BackGround;
 	sf::Font font;
@@ -53,12 +66,14 @@ private:
 	std::size_t FirstVisibleLineVtxt;
 	std::size_t LastVisibleLineVtxt;
 
+
 	std::size_t m_begin_selected_x;
 	std::size_t m_end_selected_x;
 	std::size_t m_begin_selected_y;
 	std::size_t m_end_selected_y;
 
 	int textSize;
+	int tabSpaces;
 	
 	bool isSettingsOpened;
 	bool isOpenFromFileOpened;
@@ -74,13 +89,20 @@ private:
 	void SaveAs();
 	void Save();
 
+	std::string m_Fontpath;
+	std::string m_BG_picpath;
 	
+	std::string m_preffered_cfg;
+
 	std::string m_filename;
 	std::string m_selected_area;
+
+	const std::vector<std::string>* c_cfg_buffer;
 
 	const std::string version;
 
 	RWFM ReadOrWriteModule;
+	RWFM m_CFG_MODULE;
 
 	float lineSpacing;
 	float numberSpacing;
@@ -88,6 +110,7 @@ private:
 	float m_textSpacing;
 	float m_char_width;
 	float m_line_height;
+	float m_BottomPanelHeight;
 
 	void getInput(const sf::Event& event);
 	void scrollVertical(const sf::Event& event, sf::View& v, const sf::RenderWindow& w);
@@ -108,13 +131,16 @@ private:
 	void resizeWindow(const sf::Event& event, sf::View& view, sf::RenderWindow& window);
 	void pasteFromClipBoard();
 	void copyToClipboard();
+	void saveSettings();
+	void cfgParser(const std::vector<std::string>& buffer);
+	void loadCFG(const std::string& cfg_path, unsigned int type);
 
 	bool checkIfThereIsTxTEnding(const std::string& s);
 
 	std::string show_SaveAsDialog() noexcept;
 	std::string show_LoadFromDialog(std::string_view filter) noexcept;
-
 	std::string getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey);
+	std::string deleteSpaces(const std::string& str);
 public:
 	TE();
 
