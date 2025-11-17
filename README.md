@@ -8,14 +8,13 @@ This project was created to expand my knowledge in the **software engineering** 
 - Lightweight and fast text editor
 - Customizable interface (fonts, colors, etc.)
 - Clipboard support (copy & paste)
-- Planned support for shortcuts and configuration file
 - I/O operations (write to file, read from file)
 
 ## TODO List
-
+- [ ] Undo feature
 - [ ] Wide strings support
 - [ ] Refactor this README
 
 ## Installation
-
-## Usage
+just know that settings and font folders have to be in the same directory as executable and dlls
+for it to find the cfg files and work flawlessly.
