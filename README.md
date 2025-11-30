@@ -2,7 +2,7 @@
 
 **WCN** stands for **Windows Customizable Notepad**.  
 This project was created because a) was bored and b) i wanted to chalenge myself
-So it can be pretty bad.
+So it can be pretty **bad**.
 
 use it how you want!
 ## Features
@@ -12,7 +12,7 @@ use it how you want!
 - Full unicode support
 
 ## Installation
-# Use Git clone or download the zip file.
+**Use Git clone or download the zip file.**
 
 ## Use
 settings and font folders have to be in the same directory as executable and dlls
