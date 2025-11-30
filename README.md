@@ -1,8 +1,10 @@
-# WLTE(C) Project
+# WCN Project
 
-**WLTE(C)** stands for **Windows Lightweight Text Editor (Customizable)**.  
-This project was created to expand my knowledge in the **software engineering** field.
+**WCN** stands for **Windows Customizable Notepad**.  
+This project was created because a) was bored and b) i wanted to chalenge myself
+So it can be pretty bad.
 
+use it how you want!
 ## Features
 - Customizable interface (fonts, colors, etc.)
 - Clipboard support (copy & paste)
@@ -10,5 +12,8 @@ This project was created to expand my knowledge in the **software engineering** 
 - Full unicode support
 
 ## Installation
-just know that settings and font folders have to be in the same directory as executable and dlls
+# Use Git clone or download the zip file.
+
+## Use
+settings and font folders have to be in the same directory as executable and dlls
 for it to find the cfg files and work flawlessly.
