@@ -4,19 +4,19 @@ TE::TE() :   m_textSpacing(2.f), FirstVisibleLineVtxt(0), LastVisibleLineVtxt(0)
              allowVtxtConstructing(true), textScaling(1.f), BiggestLineIdx(0),
              transparentCursor(true), ShowStar(false), isSaveAsOpened(false), isOpenFromFileOpened(false),
              CursorColor(sf::Color::White), NumColor(sf::Color::White),
-             TextColor(sf::Color::White), isSettingsOpened(false), m_filename("Untitled.txt"), version("alpha"),
+             TextColor(sf::Color::White), isSettingsOpened(false), m_filename(L"Untitled.txt"), version(L"BETA"),
              BackGround({ 0.f, 0.f }), textSize(16),
              font(), allowScrolling(false), cursor({ 0.f, 0.f }), lineSpacing(23.f), numberSpacing(0),
              cursorColumn(0), cursorLine(0), lastCharSizeX(0), text(font), m_selected(false), m_begin_selected_x(0),
              m_end_selected_x(0), m_begin_selected_y(0), m_end_selected_y(0), m_selected_area(), m_selectedLines_list(),
              m_char_width(0.f), m_line_height(0.f), m_stopedSelecting(true), c_cfg_buffer(nullptr), m_CFG_MODULE(), m_cfgmap(),
-             m_BackGroundColor(sf::Color::Black), m_CursorSize(2.f, static_cast<float>(textSize)), m_BG_picpath(""),
-             m_Fontpath("font\\Consolas.ttf"), m_LastUsedBgColor(), m_BottomPanelHeight(0.f), tabSpaces(0), m_preffered_cfg()
+             m_BackGroundColor(sf::Color::Black), m_CursorSize(2.f, static_cast<float>(textSize)), m_BG_picpath(L""),
+             m_Fontpath(L"font\\Consolas.ttf"), m_LastUsedBgColor(), m_BottomPanelHeight(0.f), tabSpaces(0), m_preffered_cfg()
 {
     text.setCharacterSize(textSize);
     Vtxt.reserve(1);
     lines.resize(1);
-    lines = { "" };
+    lines = { L"" };
     ReadOrWriteModule.setFileName(m_filename);
     TextInitialPos = { 130.f, 10.f };
     cfg_settings = { &m_Fontpath, &textSize, &textScaling, &m_CursorSize, &m_BG_picpath, &CursorColor, &NumColor, &TextColor, &m_BackGroundColor, &tabSpaces, &m_preffered_cfg};
@@ -48,47 +48,46 @@ void TE::shiftRight()
     cursorColumn += 1;
 }
 
-bool TE::checkIfThereIsTxTEnding(const std::string& s)
+bool TE::checkIfThereIsTxTEnding(const std::wstring& s)
 {
     const std::size_t i = s.find_last_of('.');
     if (i == std::string::npos)
         return false;
 
-    std::string_view ending = std::string_view(s).substr(i);
-    return ending == ".txt";
+    return s.substr(i) == L".txt";
 }
 
 // if failed returns "".
 // if succed returns selected filepath.
-std::string TE::show_SaveAsDialog() noexcept
+std::wstring TE::show_SaveAsDialog() noexcept
 {
-    char fileName[MAX_PATH] = "";
+    wchar_t fileName[MAX_PATH] = L"";
 
-    OPENFILENAMEA ofn;
+    OPENFILENAMEW ofn;
     ZeroMemory(&ofn, sizeof(ofn));
 
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL;  
-    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
+    ofn.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
     ofn.lpstrFile = fileName;
     ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrTitle = "Save As";
+    ofn.lpstrTitle = L"Save As";
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
 
-    if (GetSaveFileNameA(&ofn)) {
-        return std::string(fileName); // User selected a file
+    if (GetSaveFileNameW(&ofn)) {
+        return fileName; // User selected a file
     }
 
-    return std::string("");
+    return L"";
 }
 
 // if failed returns "".
 // if succed returns selected filepath.
-std::string TE::show_LoadFromDialog(std::string_view filter) noexcept
+std::wstring TE::show_LoadFromDialog(const std::wstring& filter) noexcept
 {
-    char fileName[MAX_PATH] = "";
+    wchar_t fileName[MAX_PATH] = L"";
 
-    OPENFILENAMEA ofn;
+    OPENFILENAMEW ofn;
     ZeroMemory(&ofn, sizeof(ofn));
 
     ofn.lStructSize = sizeof(ofn);
@@ -96,21 +95,20 @@ std::string TE::show_LoadFromDialog(std::string_view filter) noexcept
     ofn.lpstrFilter = filter.data();
     ofn.lpstrFile = fileName;
     ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrTitle = "Open From";
+    ofn.lpstrTitle = L"Open From";
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
 
-    if (GetOpenFileNameA(&ofn)) {
-        std::cout << "OPEN FILE " << fileName << '\n';
-        return std::string(fileName); // User selected a file
+    if (GetOpenFileNameW(&ofn)) {
+        return fileName; // User selected a file
     }
 
-    return "";
+    return L"";
 }
 
-std::string TE::getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey)
+std::wstring TE::getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey)
 {
     m_selectedLines_list.clear();
-    std::string selected_str;
+    std::wstring selected_str;
 
     if (Sy > Ey || (Sy == Ey && Sx > Ex))
     {
@@ -183,22 +181,18 @@ void TE::show_settings()
 void TE::saveSettings()
 {
     std::filesystem::current_path(m_base_path);
-    std::cout << std::filesystem::current_path();
-    m_CFG_MODULE.setFileName("startup.cfg");
+    m_CFG_MODULE.setFileName(L"startup.cfg");
     if (m_CFG_MODULE.ReadFile() != RWFM::StatusCodes::STATUS_OK)
     {
-        std::cout << "\n#LOG# coudln`t find startup using startup.cfg path, trying settings\\startup.cfg path\n";
-        m_CFG_MODULE.setFileName("settings\\startup.cfg");
+        m_CFG_MODULE.setFileName(L"settings\\startup.cfg");
         if (m_CFG_MODULE.ReadFile() != RWFM::StatusCodes::STATUS_OK)
         {
-            std::cout << "\n#LOG# couldn`t find c_settings using settings\\startup.cfg path. Terminating.\n";
             return;
         }
-        std::cout << "\n#LOG# startup.cfg found!\n";
     }
 
-    std::vector<std::string> buffer = m_CFG_MODULE.getBuffer();
-    std::vector<std::string> new_startup_buffer;
+    std::vector<std::wstring> buffer = m_CFG_MODULE.getBuffer();
+    std::vector<std::wstring> new_startup_buffer;
     new_startup_buffer.reserve(buffer.size());
     bool is_cfg_not_damaged = true;
     int i = 0;
@@ -212,45 +206,39 @@ void TE::saveSettings()
             continue;
         }
         std::size_t equ = buffer[i].find_first_of('=');
-        std::string key = buffer[i].substr(0, equ);
-        std::cout << "\nkey " << key << ";";
+        std::wstring key = buffer[i].substr(0, equ);
         std::size_t semi = buffer[i].find_first_of(';');
-        std::string val = buffer[i].substr(equ+1, semi - equ - 1);
-        std::cout << "\nval " << val << ";";
+        std::wstring val = buffer[i].substr(equ+1, semi - equ - 1);
 
-        if (deleteSpaces(key) != "FORCELOAD_CFG")
+        if (deleteSpaces(key) != L"FORCELOAD_CFG")
         {
             is_cfg_not_damaged = false;
             continue;
         }
         
-        if (m_preffered_cfg == "D_SETTINGS.cfg" || m_preffered_cfg.empty())
+        if (m_preffered_cfg == L"D_SETTINGS.cfg" || m_preffered_cfg.empty())
         {
-            val = "0";
+            val = L"0";
         }
-        else if (m_preffered_cfg == "C_SETTINGS.cfg")
+        else if (m_preffered_cfg == L"C_SETTINGS.cfg")
         {
-            val = "1";
+            val = L"1";
         }
 
-        std::string new_line = key + "=" + val + ";";
+        std::wstring new_line = key + L"=" + val + L";";
         new_startup_buffer.push_back(new_line);
-        std::cout << "\n" << new_startup_buffer[i];
     }
     
     m_CFG_MODULE.WriteToFile(new_startup_buffer);
 
-    m_CFG_MODULE.setFileName("C_SETTINGS.cfg");
+    m_CFG_MODULE.setFileName(L"C_SETTINGS.cfg");
     if (m_CFG_MODULE.ReadFile() != RWFM::StatusCodes::STATUS_OK)
     {
-        std::cout << "\n#LOG# coudln`t find c_settings using C_SETTINGS.cfg path, trying settings\\C_SETTINGS.cfg path\n";
-        m_CFG_MODULE.setFileName("settings\\C_SETTINGS.cfg");
+        m_CFG_MODULE.setFileName(L"settings\\C_SETTINGS.cfg");
         if (m_CFG_MODULE.ReadFile() != RWFM::StatusCodes::STATUS_OK)
         {
-            std::cout << "\n#LOG# couldn`t find c_settings using settings\\C_SETTINGS.cfg path. Terminating.\n";
             return;
         }
-        std::cout << "\n#LOG# c_settings found!\n";
     }
 
     buffer = m_CFG_MODULE.getBuffer(); 
@@ -267,84 +255,74 @@ void TE::saveSettings()
             continue;
         }
         std::size_t equ = buffer[i].find_first_of('=');
-        std::string key = buffer[i].substr(0, equ);
-        std::cout << "\nkey " << key << ";";
+        std::wstring key = buffer[i].substr(0, equ);
         
-        std::string new_line;
-        std::string processed_key = deleteSpaces(key);
-        if (processed_key == "BGCOLOR")
+        std::wstring new_line;
+        std::wstring processed_key = deleteSpaces(key);
+
+        auto print1 = [](auto &key, auto& color) 
         {
-            new_line = processed_key + '=' + 
-                '('
-                + std::to_string(m_BackGroundColor.r) + ',' + std::to_string(m_BackGroundColor.g) +
-                ',' + std::to_string(m_BackGroundColor.b) + ',' + std::to_string(m_BackGroundColor.a) + 
-                ')' + ';';
-            std::cout << "\n" << new_line;
+            return key + L'=' + L'(' + 
+                std::to_wstring(color.r) + L',' + std::to_wstring(color.g) +L',' + std::to_wstring(color.b) + L',' + std::to_wstring(color.a) 
+            + L')' + L';';
+        };
+
+        auto print2 = [](auto &key, std::wstring& arg) 
+        {
+            return key + L'=' + arg + L';';
+        };
+
+        auto print3 = [](auto& key, auto& arg)
+            {
+                return key + L'=' + std::to_wstring(arg) + L';';
+            };
+
+        if (processed_key == L"BGCOLOR")
+        {
+            new_line = print1(processed_key, m_BackGroundColor);
         }
-        else if (processed_key == "TXTCOLOR")
+        else if (processed_key == L"TXTCOLOR")
         {
-            new_line = processed_key + '=' +
-                '('
-                + std::to_string(TextColor.r) + ',' + std::to_string(TextColor.g) +
-                ',' + std::to_string(TextColor.b) + ',' + std::to_string(TextColor.a) +
-                ')' + ';';
-            std::cout << "\n" << new_line;
+            new_line = print1(processed_key, TextColor);
         }
-        else if (processed_key == "NUMCOLOR")
+        else if (processed_key == L"NUMCOLOR")
         {
-            new_line = processed_key + '=' +
-                '('
-                + std::to_string(NumColor.r) + ',' + std::to_string(NumColor.g) +
-                ',' + std::to_string(NumColor.b) + ',' + std::to_string(NumColor.a) +
-                ')' + ';';
-            std::cout << "\n" << new_line;
+            new_line = print1(processed_key, NumColor);
         }
-        else if (processed_key == "CURSCOLOR")
+        else if (processed_key == L"CURSCOLOR")
         {
-            new_line = processed_key + '=' +
-                '('
-                + std::to_string(CursorColor.r) + ',' + std::to_string(CursorColor.g) +
-                ',' + std::to_string(CursorColor.b) + ',' + std::to_string(CursorColor.a) +
-                ')' + ';';
-            std::cout << "\n" << new_line;
+            new_line = print1(processed_key, CursorColor);
         }
-        else if (processed_key == "BGPICPATH")
+        else if (processed_key == L"BGPICPATH")
         {
-            new_line = processed_key + '=' + m_BG_picpath + ';';
-            std::cout << "\n" << new_line;
+            new_line = print2(processed_key, m_BG_picpath);
         }
-        else if (processed_key == "CURWIDTH")
+        else if (processed_key == L"CURWIDTH")
         {
-            new_line = processed_key + '=' + std::to_string(m_CursorSize.x) + ';';
-            std::cout << "\n" << new_line;
+            new_line = print3(processed_key, m_CursorSize.x);
         }
-        else if (processed_key == "CURHEIGHT")
+        else if (processed_key == L"CURHEIGHT")
         {
-            new_line = processed_key + '=' + std::to_string(m_CursorSize.y) + ';';
-            std::cout << "\n" << new_line;
+            new_line = print3(processed_key, m_CursorSize.y);
         }
-        else if (processed_key == "SCAL")
+        else if (processed_key == L"SCAL")
         {
-            new_line = processed_key + '=' + std::to_string(textScaling) + ';';
-            std::cout << "\n" << new_line;
+            new_line = print3(processed_key, textScaling);
         }
-        else if (processed_key == "TXTSIZE")
+        else if (processed_key == L"TXTSIZE")
         {
-            new_line = processed_key + '=' + std::to_string(textSize) + ';';
-            std::cout << "\n" << new_line;
+            new_line = print3(processed_key, textSize);
         }
-        else if (processed_key == "TABSPACE")
+        else if (processed_key == L"TABSPACE")
         {
-            new_line = processed_key + '=' + std::to_string(tabSpaces) + ';';
-            std::cout << "\n" << new_line;
+            new_line = print3(processed_key, tabSpaces);
         }
-        else if (processed_key == "FONTPATH")
+        else if (processed_key == L"FONTPATH")
         {
-            new_line = processed_key + '=' + m_Fontpath + ';';
-            std::cout << "\n" << new_line;
+            new_line = print2(processed_key, m_Fontpath);
         }
   
-        if(new_line != "")
+        if(new_line != L"")
             new_startup_buffer.push_back(new_line);
         ++i;
     }
@@ -479,18 +457,18 @@ void TE::spritesMenu(tgui::Gui& gui)
         });
 
     SetPrefferedCfgButton->onPress([&]() {
-        std::string cfgfilepath = show_LoadFromDialog("cfg files(*.cfg)\0*.cfg\0All files (*.*)\0*.*\0\0");
+        std::wstring cfgfilepath = show_LoadFromDialog(L"cfg files(*.cfg)\0*.cfg\0All files (*.*)\0*.*\0\0");
         if (cfgfilepath.size() >= 23)
         {
-            const std::string c_IS_THIS_THE_CE_DEFAULT_CONFIG_NAME_OR_ISNT_IT = cfgfilepath.substr(cfgfilepath.size() - 23);
+            const std::wstring c_IS_THIS_THE_CE_DEFAULT_CONFIG_NAME_OR_ISNT_IT = cfgfilepath.substr(cfgfilepath.size() - 23);
 
             if (c_IS_THIS_THE_CE_DEFAULT_CONFIG_NAME_OR_ISNT_IT == CE_DEFAULT_CONFIG_NAME)
             {
-                m_preffered_cfg = "D_SETTINGS.cfg";
+                m_preffered_cfg = L"D_SETTINGS.cfg";
             }
             else if (c_IS_THIS_THE_CE_DEFAULT_CONFIG_NAME_OR_ISNT_IT == CE_CUSTOM_CONFIG_NAME)
             {
-                m_preffered_cfg = "C_SETTINGS.cfg";
+                m_preffered_cfg = L"C_SETTINGS.cfg";
             }
         }
         
@@ -551,7 +529,7 @@ void TE::colorMenu(tgui::Gui& gui)
 
 void TE::setNewBgTexture()
 {
-    const char* filter = "Png files(*.png)\0*.png\0Jpeg files(*.jpeg)\0*.jpeg\0Jpg files(*.jpg)\0*.jpg\0All files (*.*)\0*.*\0\0";
+    const wchar_t* filter = L"Png files(*.png)\0*.png\0Jpeg files(*.jpeg)\0*.jpeg\0Jpg files(*.jpg)\0*.jpg\0All files (*.*)\0*.*\0\0";
     m_BG_picpath = show_LoadFromDialog(filter);
     bgTexture = {};
     if (m_BG_picpath.size() > 0 && !bgTexture.loadFromFile(m_BG_picpath))
@@ -566,10 +544,10 @@ void TE::setNewBgTexture()
 
 void TE::setNewFont()
 {
-    const std::string_view filter = "Font`s (*.ttf)\0 * .ttf\0All Files\0 * .*\0\0";
+    const std::wstring filter = L"Font`s (*.ttf)\0 * .ttf\0All Files\0 * .*\0\0";
     m_Fontpath = show_LoadFromDialog(filter);
 
-    if (m_Fontpath.size() > 1 || GetFileAttributesA(m_Fontpath.c_str()) != INVALID_FILE_ATTRIBUTES)
+    if (m_Fontpath.size() > 1 || GetFileAttributesW(m_Fontpath.c_str()) != INVALID_FILE_ATTRIBUTES)
     {
         font = sf::Font();
         if (!font.openFromFile(m_Fontpath))
@@ -685,14 +663,14 @@ void TE::pasteFromClipBoard()
     }
     else
     {
-        HANDLE hndl = GetClipboardData(CF_TEXT);
+        HANDLE hndl = GetClipboardData(CF_UNICODETEXT);
         if (hndl != NULL)
         {
-            char* buff = static_cast<char*>(GlobalLock(hndl));
+            wchar_t* buff = static_cast<wchar_t*>(GlobalLock(hndl));
             if (buff != NULL)
             {
                 int linescount = 0;
-                for (char* i = buff; *i != '\0'; ++i)
+                for (wchar_t* i = buff; *i != '\0'; ++i)
                 {
                     if (*i == '\n')
                     {
@@ -701,10 +679,10 @@ void TE::pasteFromClipBoard()
                 }
                 if (linescount > 0)
                 {
-                    std::vector<std::string> pasted_lines;
+                    std::vector<std::wstring> pasted_lines;
                     pasted_lines.reserve(linescount);
-                    std::string accum;
-                    char* j = buff;
+                    std::wstring accum;
+                    wchar_t* j = buff;
                     for (; *j != '\0'; ++j)
                     {
                         accum += *j;
@@ -717,8 +695,8 @@ void TE::pasteFromClipBoard()
                     if (!accum.empty())
                         pasted_lines.push_back(accum);
 
-                    std::string left = lines[cursorLine].substr(0, cursorColumn);
-                    std::string right = lines[cursorLine].substr(cursorColumn);
+                    std::wstring left = lines[cursorLine].substr(0, cursorColumn);
+                    std::wstring right = lines[cursorLine].substr(cursorColumn);
                     lines[cursorLine] = left;
                     for (int i = 0; i < pasted_lines.size(); ++i)
                     {
@@ -730,7 +708,7 @@ void TE::pasteFromClipBoard()
                 }
                 else
                 {
-                    lines[cursorLine].insert(cursorColumn, std::string(buff));
+                    lines[cursorLine].insert(cursorColumn, std::wstring(buff));
                 }
 
                 GlobalUnlock(hndl);
@@ -754,7 +732,7 @@ void TE::copyToClipboard()
     {
         EmptyClipboard();
 
-        std::size_t b_size = m_selected_area.size() / sizeof(char) + 1;
+        std::size_t b_size = (m_selected_area.size()+1) * sizeof(wchar_t);
 
         HGLOBAL allocated_chunk = GlobalAlloc(GMEM_MOVEABLE, b_size);
         if (allocated_chunk == NULL)
@@ -763,7 +741,7 @@ void TE::copyToClipboard()
             return;
         }
 
-        char* pointer_to_chunk = static_cast<char*>(GlobalLock(allocated_chunk));
+        wchar_t* pointer_to_chunk = static_cast<wchar_t*>(GlobalLock(allocated_chunk));
         if (pointer_to_chunk == NULL)
         {
             GlobalFree(allocated_chunk);
@@ -771,11 +749,11 @@ void TE::copyToClipboard()
             return;
         }
 
-        strcpy_s(pointer_to_chunk, b_size, m_selected_area.c_str());
+        wcscpy_s(pointer_to_chunk, b_size, m_selected_area.c_str());
 
         GlobalUnlock(allocated_chunk);
         
-        if (SetClipboardData(CF_TEXT, allocated_chunk) == NULL) {
+        if (SetClipboardData(CF_UNICODETEXT, allocated_chunk) == NULL) {
             GlobalFree(allocated_chunk);
         }
         CloseClipboard();
@@ -789,9 +767,9 @@ void TE::OpenFromFIle()
     // i need to ask the client from where should i read
     // i will use the win api way almost like
     // with save as
-    const char* filter = "Text Files(*.txt)\0 * .txt\0All Files\0 * .*\0\0";
-    const std::string FromWhereToRead = show_LoadFromDialog(filter);
-    if (GetFileAttributesA(FromWhereToRead.c_str()) != INVALID_FILE_ATTRIBUTES)
+    const wchar_t* filter = L"Text Files (*.txt)\0*.txt\0All Files\0*.*\0";
+    const std::wstring FromWhereToRead = show_LoadFromDialog(filter);
+    if (GetFileAttributesW(FromWhereToRead.c_str()) != INVALID_FILE_ATTRIBUTES)
     {
         if (!FromWhereToRead.empty()) {
             m_filename = FromWhereToRead;
@@ -801,7 +779,7 @@ void TE::OpenFromFIle()
             if (ReadOrWriteModule.getStatusCode() == RWFM::StatusCodes::STATUS_EMPTYBUF)
             {
                 lines.clear();
-                lines = { "" };
+                lines = { L"" };
             }
             else
             {
@@ -818,7 +796,7 @@ void TE::OpenFromFIle()
     }
     else
     {
-        MessageBoxA(NULL, "INVALID_FILE_ATTRIBUTES try with existing file", "ERROR", MB_OK | MB_ICONERROR);
+        MessageBoxW(NULL, L"INVALID_FILE_ATTRIBUTES try with existing file", L"ERROR", MB_OK | MB_ICONERROR);
     }
     isOpenFromFileOpened = false;
 }
@@ -827,7 +805,7 @@ void TE::SaveAs()
 {
     // we should request new filename from user
     // for this i will use windows API 
-    std::string newFileName = show_SaveAsDialog();
+    std::wstring newFileName = show_SaveAsDialog();
     if (!newFileName.empty()) {
     
         m_filename = newFileName;
@@ -846,13 +824,13 @@ void TE::SaveAs()
 
 void TE::Save()
 {
-    if (GetFileAttributesA(m_filename.c_str()) != INVALID_FILE_ATTRIBUTES)
+    if (GetFileAttributesW(m_filename.c_str()) != INVALID_FILE_ATTRIBUTES)
     {
         // file exists
         ReadOrWriteModule.WriteToFile(lines);
         ShowStar = false;
     }
-    else if(m_filename == "Untitled.txt" || m_filename != "Untitled.txt*")
+    else if(m_filename == L"Untitled.txt" || m_filename != L"Untitled.txt*")
     {
         SaveAs();
     }
@@ -865,8 +843,8 @@ void TE::getInput(const sf::Event& event)
         CursorIdleTime.restart();
         setCursorVisible();
 
-        char typed = static_cast<char>(textEntered->unicode);
-        if (typed == 8) // Backspace
+        uint32_t  typed = textEntered->unicode;
+        if (typed == '\b') // Backspace
         {
             if (m_selected)
             {
@@ -883,7 +861,7 @@ void TE::getInput(const sf::Event& event)
                 }
                 else if (endl != begl)
                 {
-                    std::string copy = lines[begl].substr(end_pos);
+                    std::wstring copy = lines[begl].substr(end_pos);
                     int i = begl;
                     for (; i > endl; --i)
                     {
@@ -922,7 +900,7 @@ void TE::getInput(const sf::Event& event)
             ShowStar = true;
             m_selected = false;
         }
-        else if (typed == 13 || typed == '\n') // Enter
+        else if (typed == '\n' || typed == '\r') // Enter
         {
             if (m_selected)
             {
@@ -939,7 +917,7 @@ void TE::getInput(const sf::Event& event)
                 }
                 else if (endl != begl)
                 {
-                    std::string copy = lines[begl].substr(end_pos);
+                    std::wstring copy = lines[begl].substr(end_pos);
                     int i = begl;
                     for (; i > endl; --i)
                     {
@@ -952,8 +930,8 @@ void TE::getInput(const sf::Event& event)
                     cursorColumn = fchar_pos;
                 }
             }
-            std::string left = lines[cursorLine].substr(0, cursorColumn);
-            std::string right = lines[cursorLine].substr(cursorColumn);
+            std::wstring left = lines[cursorLine].substr(0, cursorColumn);
+            std::wstring right = lines[cursorLine].substr(cursorColumn);
 
             lines[cursorLine] = left;
             cursorLine += 1;
@@ -965,7 +943,7 @@ void TE::getInput(const sf::Event& event)
             ShowStar = true;
             m_selected = false;
         }
-        else if (typed == 9 || typed == '\t') // Tab
+        else if (typed == '\t') // Tab
         {
             if (m_selected)
             {
@@ -982,7 +960,7 @@ void TE::getInput(const sf::Event& event)
                 }
                 else if (endl != begl)
                 {
-                    std::string copy = lines[begl].substr(end_pos);
+                    std::wstring copy = lines[begl].substr(end_pos);
                     int i = begl;
                     for (; i > endl; --i)
                     {
@@ -1004,7 +982,7 @@ void TE::getInput(const sf::Event& event)
             ShowStar = true;
             m_selected = false;
         }
-        else if (typed >= 32 && typed < 127) // chars
+        else if(typed >= 32 && typed != 127)
         {
             if(m_selected)
             {
@@ -1021,7 +999,7 @@ void TE::getInput(const sf::Event& event)
                 }
                 else if(endl != begl)
                 {
-                    std::string copy = lines[begl].substr(end_pos);
+                    std::wstring copy = lines[begl].substr(end_pos);
                     int i = begl;
                     for (; i > endl; --i)
                     {
@@ -1105,7 +1083,7 @@ void TE::scrollVertical(const sf::Event& event, sf::View& v, const sf::RenderWin
     v.setCenter(center);
 }
 
-void TE::handleCursor(const std::vector<std::string>& t, sf::Keyboard::Scancode keyCode)
+void TE::handleCursor(const std::vector<std::wstring>& t, sf::Keyboard::Scancode keyCode)
 {
     CursorIdleTime.restart();
     setCursorVisible();
@@ -1134,15 +1112,15 @@ void TE::handleCursor(const std::vector<std::string>& t, sf::Keyboard::Scancode 
     cursorLine = std::min(cursorLine, t.size() - 1);
 }
 
-std::string TE::deleteSpaces(const std::string& str)
+std::wstring TE::deleteSpaces(const std::wstring& str)
 {
-    std::string s = str;
+    std::wstring s = str;
     s.erase(std::remove_if(s.begin(), s.end(), isspace), s.end());
     s.erase(std::remove_if(s.begin(), s.end(), [=](char c) {return c == '\n'; }), s.end());
     return s;
 }
 
-void TE::cfgParser(const std::vector<std::string>& buffer)
+void TE::cfgParser(const std::vector<std::wstring>& buffer)
 {
     m_cfgmap.clear();
 
@@ -1153,8 +1131,8 @@ void TE::cfgParser(const std::vector<std::string>& buffer)
     for(std::size_t y = 0;y < buffer.size();++y)
     {
         bool commentflag = false;
-        std::string insides = deleteSpaces(buffer[y]);
-        std::string key, val;
+        std::wstring insides = deleteSpaces(buffer[y]);
+        std::wstring key, val;
 
         // processing key
         for (std::size_t x1 = 0;x1 < insides.size() && insides[x1] != '='; ++x1)
@@ -1188,42 +1166,42 @@ void TE::cfgParser(const std::vector<std::string>& buffer)
     // parser
     for (auto& e : m_cfgmap)
     {
-        if (e.first == "FORCELOAD_CFG")
+        if (e.first == L"FORCELOAD_CFG")
         {
-            *reinterpret_cast<std::string*>(cfg_settings[10]) = (std::stoi(e.second) == 0 ? CE_DEFAULT_CONFIG_NAME : CE_CUSTOM_CONFIG_NAME);
+            *reinterpret_cast<std::wstring*>(cfg_settings[10]) = (std::stoi(e.second) == 0 ? CE_DEFAULT_CONFIG_NAME : CE_CUSTOM_CONFIG_NAME);
         }
-        else if (e.first == "FONTPATH")
+        else if (e.first == L"FONTPATH")
         {
-            *reinterpret_cast<std::string*>(cfg_settings[0]) = (e.second == "null" || e.second == "NULL") ? "" : e.second;
+            *reinterpret_cast<std::wstring*>(cfg_settings[0]) = (e.second == L"null" || e.second == L"NULL") ? L"" : e.second;
         }
-        else if (e.first == "TXTSIZE")
+        else if (e.first == L"TXTSIZE")
         {
             *reinterpret_cast<int*>(cfg_settings[1]) = std::stoi(e.second);
         }
-        else if (e.first == "TABSPACE")
+        else if (e.first == L"TABSPACE")
         {
             *reinterpret_cast<int*>(cfg_settings[9]) = std::stoi(e.second);
         }
-        else if (e.first == "SCAL")
+        else if (e.first == L"SCAL")
         {
             *reinterpret_cast<float*>(cfg_settings[2]) = std::stof(e.second);
         }
-        else if (e.first == "CURHEIGHT")
+        else if (e.first == L"CURHEIGHT")
         {
             (*reinterpret_cast<sf::Vector2f*>(cfg_settings[3])).y = std::stod(e.second);
         }
-        else if (e.first == "CURWIDTH")
+        else if (e.first == L"CURWIDTH")
         {
             (*reinterpret_cast<sf::Vector2f*>(cfg_settings[3])).x = std::stod(e.second);
         }
-        else if (e.first == "BGPICPATH")
+        else if (e.first == L"BGPICPATH")
         {
-            *reinterpret_cast<std::string*>(cfg_settings[4]) = (e.second == "null" || e.second == "NULL") ? "" : e.second;
+            *reinterpret_cast<std::wstring*>(cfg_settings[4]) = (e.second == L"null" || e.second == L"NULL") ? L"" : e.second;
         }
         else 
         {
-            auto l_Init_Colors = [&](std::array<void*, 11>& table, std::size_t index, std::string& val) {
-                std::string colorT = deleteSpaces(val);
+            auto l_Init_Colors = [&](std::array<void*, 11>& table, std::size_t index, std::wstring& val) {
+                std::wstring colorT = deleteSpaces(val);
                 uint8_t colorTable[4] = { 0, 0, 0, 255 };
 
                 char c[4] = { '\0', '\0', '\0', '\0'};
@@ -1251,19 +1229,19 @@ void TE::cfgParser(const std::vector<std::string>& buffer)
                 (*reinterpret_cast<sf::Color*>(table[index])).a = colorTable[3];
             };
 
-            if (e.first == "CURSCOLOR")
+            if (e.first == L"CURSCOLOR")
             {
                 l_Init_Colors(cfg_settings, 5, e.second);
             }
-            else if (e.first == "NUMCOLOR")
+            else if (e.first == L"NUMCOLOR")
             {
                 l_Init_Colors(cfg_settings, 6, e.second);
             }
-            else if (e.first == "TXTCOLOR")
+            else if (e.first == L"TXTCOLOR")
             {
                 l_Init_Colors(cfg_settings, 7, e.second);
             }
-            else if (e.first == "BGCOLOR")
+            else if (e.first == L"BGCOLOR")
             {
                 l_Init_Colors(cfg_settings, 8, e.second);
             }
@@ -1271,7 +1249,7 @@ void TE::cfgParser(const std::vector<std::string>& buffer)
     }
 }
 
-void TE::loadCFG(const std::string& path, unsigned int type)
+void TE::loadCFG(const std::wstring& path, unsigned int type)
 {
     m_CFG_MODULE.setFileName(path);
     m_CFG_MODULE.ReadFile();
@@ -1314,8 +1292,7 @@ void TE::loadCFG(const std::string& path, unsigned int type)
 
 void TE::Start()
 {
-    std::cout << std::filesystem::current_path();
-    sf::RenderWindow window(sf::VideoMode({ 1000, 700 }), "MLTE v" + version + " : " + m_filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
+    sf::RenderWindow window(sf::VideoMode({ 1000, 700 }), L"MLTE v" + version + L" : " + m_filename, sf::Style::Close | sf::Style::Titlebar | sf::Style::Resize, sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
 
@@ -1416,8 +1393,8 @@ void TE::Start()
     cursor.setPosition({ text.getPosition().x - text.getCharacterSize(), text.getPosition().y });
     cursor.setFillColor(sf::Color::White);
 
-    std::string WindowTitle = "MLTE v" + version + " : " + m_filename;
-    std::string strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
+    std::wstring WindowTitle = L"MLTE v" + version + L" : " + m_filename;
+    std::wstring strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
 
     //--------/init clocks\--------
 
@@ -1433,7 +1410,7 @@ void TE::Start()
     CursorIdleTime.start(); // cursor idle anim
     //-----------------------------
 
-    std::string previous_filename = m_filename;
+    std::wstring previous_filename = m_filename;
     constexpr const float zoomInVal = 0.9f;
 
     //---------/main-loop\---------
@@ -1445,15 +1422,15 @@ void TE::Start()
             previous_filename = m_filename;
 
             strapedFilename = m_filename.substr(m_filename.find_last_of('\\') + 1);
-            window.setTitle("MLTE v" + version + " : " + strapedFilename);
+            window.setTitle(L"MLTE v" + version + L" : " + strapedFilename);
         }
         if (ShowStar)
         {
-            window.setTitle("MLTE v" + version + " : " + '*' + strapedFilename);
+            window.setTitle(L"MLTE v" + version + L" : " + L'*' + strapedFilename);
         }
         else
         {
-            window.setTitle("MLTE v" + version + " : " + strapedFilename);
+            window.setTitle(L"MLTE v" + version + L" : " + strapedFilename);
         }
         while (const std::optional event = window.pollEvent())
         {

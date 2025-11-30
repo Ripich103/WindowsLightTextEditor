@@ -18,9 +18,9 @@
 
 #define DEBUG 1
 
-constexpr const char* CE_DEFAULT_CONFIG_NAME = "settings\\D_SETTINGS.cfg";
-constexpr const char* CE_CUSTOM_CONFIG_NAME  = "settings\\C_SETTINGS.cfg";
-constexpr const char* CE_STARTUP_NAME = "settings\\startup.cfg";
+constexpr const wchar_t* CE_DEFAULT_CONFIG_NAME = L"settings\\D_SETTINGS.cfg";
+constexpr const wchar_t* CE_CUSTOM_CONFIG_NAME  = L"settings\\C_SETTINGS.cfg";
+constexpr const wchar_t* CE_STARTUP_NAME = L"settings\\startup.cfg";
 
 class TE
 {
@@ -35,9 +35,9 @@ private:
 
 	std::array<void*, 11> cfg_settings;
 
-	std::map<std::string, std::string> m_cfgmap;
+	std::map<std::wstring, std::wstring> m_cfgmap;
 
-	std::vector<std::string> lines;
+	std::vector<std::wstring> lines;
 	std::vector<sf::Text> Vtxt;
 	std::vector<sf::Text> lineNumbers;
 	sf::Vector2f TextInitialPos;
@@ -89,17 +89,17 @@ private:
 	void SaveAs();
 	void Save();
 
-	std::string m_Fontpath;
-	std::string m_BG_picpath;
+	std::wstring m_Fontpath;
+	std::wstring m_BG_picpath;
 	
-	std::string m_preffered_cfg;
+	std::wstring m_preffered_cfg;
 
-	std::string m_filename;
-	std::string m_selected_area;
+	std::wstring m_filename;
+	std::wstring m_selected_area;
 
-	const std::vector<std::string>* c_cfg_buffer;
+	const std::vector<std::wstring>* c_cfg_buffer;
 
-	const std::string version;
+	const std::wstring version;
 
 	RWFM ReadOrWriteModule;
 	RWFM m_CFG_MODULE;
@@ -115,7 +115,7 @@ private:
 	void getInput(const sf::Event& event);
 	void scrollVertical(const sf::Event& event, sf::View& v, const sf::RenderWindow& w);
 	void scrollHoryzontal(const sf::Event& event, sf::View& v, const sf::RenderWindow& w);
-	void handleCursor(const std::vector<std::string>& t, sf::Keyboard::Scancode keyCode);
+	void handleCursor(const std::vector<std::wstring>& t, sf::Keyboard::Scancode keyCode);
 	void shiftUp();
 	void shiftDown(std::size_t size);
 	void shiftLeft();
@@ -132,15 +132,15 @@ private:
 	void pasteFromClipBoard();
 	void copyToClipboard();
 	void saveSettings();
-	void cfgParser(const std::vector<std::string>& buffer);
-	void loadCFG(const std::string& cfg_path, unsigned int type);
+	void cfgParser(const std::vector<std::wstring>& buffer);
+	void loadCFG(const std::wstring& cfg_path, unsigned int type);
 
-	bool checkIfThereIsTxTEnding(const std::string& s);
+	bool checkIfThereIsTxTEnding(const std::wstring& s);
 
-	std::string show_SaveAsDialog() noexcept;
-	std::string show_LoadFromDialog(std::string_view filter) noexcept;
-	std::string getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey);
-	std::string deleteSpaces(const std::string& str);
+	std::wstring show_SaveAsDialog() noexcept;
+	std::wstring show_LoadFromDialog(const std::wstring& filter) noexcept;
+	std::wstring getSelectedString(std::size_t Sx, std::size_t Sy, std::size_t Ex, std::size_t Ey);
+	std::wstring deleteSpaces(const std::wstring& str);
 public:
 	TE();
 

@@ -9,12 +9,12 @@
 class RWFM // RWFC - read or write to file Module
 {
 private:
-	std::string m_path;
-	std::vector<std::string> m_buffer;
+	std::wstring m_path;
+	std::vector<std::wstring> m_buffer;
 
-	static inline bool is_empty(std::ifstream& pFile)
+	static inline bool is_empty(std::wifstream& pFile)
 	{
-		return pFile.peek() == std::ifstream::traits_type::eof();
+		return pFile.peek() == std::wifstream::traits_type::eof();
 	}
 
 public:
@@ -29,21 +29,21 @@ public:
 	const StatusCodes& getStatusCode() const noexcept;
 
 	explicit RWFM();
-	RWFM(std::string_view path);
-	RWFM(std::string&& path);
+	RWFM(const std::wstring& path);
+	RWFM(std::wstring&& path);
 	~RWFM();
 
-	const std::vector<std::string>& getBuffer() const noexcept;
-	std::vector<std::string>& getBuffer() noexcept;
+	const std::vector<std::wstring>& getBuffer() const noexcept;
+	std::vector<std::wstring>& getBuffer() noexcept;
 
-	std::string_view getFileName() const noexcept;
+	std::wstring getFileName() const noexcept;
 
-	void setFileName(const std::string& new_path) noexcept;
-	void setFileName(std::string&& new_path) noexcept;
+	void setFileName(const std::wstring& new_path) noexcept;
+	void setFileName(std::wstring&& new_path) noexcept;
 
 	StatusCodes ReadFile();
 
-	StatusCodes WriteToFile(const std::vector<std::string>& data);
+	StatusCodes WriteToFile(const std::vector<std::wstring>& data);
 
 private:
 	StatusCodes m_code;
